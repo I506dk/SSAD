@@ -802,13 +802,6 @@ if __name__ == '__main__':
     # Get command line arguments
     args = parse()
     
-    # Define arguments
-    server = args.server
-    database = args.database
-    username = args.username
-    password = args.password
-    admin_password = args.admin_password
-    
     # Check arguments, and if they aren't passed, ask user for them
     # Create a dictionary of the arguments.
     argument_dictionary = vars(args)
@@ -828,6 +821,13 @@ if __name__ == '__main__':
                 argument_dictionary[key] = input("Please enter the password for the service account used to connect to SQL: ")
             if key == "admin_password":
                 argument_dictionary[key] = input("Please enter the password for the local administrator account in Secret Server: ")
+                
+    # Initial variables
+    server = argument_dictionary["server"]
+    database = argument_dictionary["database"]
+    username = argument_dictionary["username"]
+    password = argument_dictionary["password"]
+    admin_password = argument_dictionary["admin_password"]
 
     # Call main function
     main_function(admin_password, username, password, server, database)
