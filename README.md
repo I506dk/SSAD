@@ -1,6 +1,6 @@
 # SSAD - Secret Server Automated Deployments
 
-![secret_server](https://user-images.githubusercontent.com/33561466/216741473-66617b77-647c-4bcf-93d0-397809b3e916.png)
+![secret_server](https://user-images.githubusercontent.com/33561466/216741532-18d4c459-211e-484d-a69f-838d3ae1fee1.png)
 
 #### A python script to automate Secret Server deployments.
 
