@@ -407,6 +407,9 @@ def install_secret_server(administrator_password, service_account, service_accou
     # Download Secret Server
     print("Downloading Secret Server installer...")
     download_file(installer_url, path)
+    
+    # Output log file to current working directory
+    log_file = os.getcwd() + "\\ss-install.log"
 
     # Command for installing secret server silently
     ss_command = '{} -q -s InstallSecretServer=1 InstallPrivilegeManager=1 ' \
@@ -416,10 +419,13 @@ def install_secret_server(administrator_password, service_account, service_accou
 
     # Run installer
     print("Installing Secret Server...")
-    os.system(ss_command)
-    
+    subprocess.run(ss_command, shell=False)
+
     # Print finish message along with url and credentials
-    # Restart server
+    print("Secret Server installation log file located at '{}'".format(log_file))
+    print("\nAdministrator credentials for Secret Server are 'administrator' with password '{}'".format(administrator_password))
+    if os.path.exists(path) is True:
+        os.remove(path)
 
     return
 
