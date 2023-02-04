@@ -415,11 +415,11 @@ def install_secret_server(administrator_password, service_account, service_accou
     ss_command = '{} -q -s InstallSecretServer=1 InstallPrivilegeManager=1 ' \
 'SecretServerUserDisplayName="Administrator" SecretServerUserName="Administrator" SecretServerUserPassword="{}" ' \
 'SecretServerAppUserName="{}" SecretServerAppPassword="{}" ' \
-'DatabaseIsUsingWindowsAuthentication=True DatabaseServer="{}" DatabaseName="{}"'.format(path, administrator_password, service_account, service_account_password, sql_hostname, database_name)
-
+'DatabaseIsUsingWindowsAuthentication=True DatabaseServer="{}" DatabaseName="{}" /l  "{}"'.format(path, administrator_password, service_account, service_account_password, sql_hostname, database_name, log_file)
+    
     # Run installer
     print("Installing Secret Server...")
-    subprocess.run(ss_command, shell=False)
+    os.system(ss_command)
 
     # Print finish message along with url and credentials
     print("Secret Server installation log file located at '{}'".format(log_file))
