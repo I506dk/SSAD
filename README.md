@@ -10,7 +10,7 @@
 - Supports Windows Server 2016 or newer
 
 ## Dependencies
-- [Pywin32] (https://pypi.org/project/pywin32/) - Python for Window Extensions
+- [Pywin32](https://pypi.org/project/pywin32/) - Python for Window Extensions
 - [Requests](https://pypi.org/project/requests/) - Python HTTP for Humans
 
 ## Installation
