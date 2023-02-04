@@ -20,12 +20,11 @@
 [![Python Latest](https://img.shields.io/badge/python-latest-blue.svg)](https://www.python.org/downloads/windows/)
 
 **Download and install Pip using the following commands:**
-**Pip comes with newer versions of python**
 ```
 curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
 python get-pip.py
 ```
-**Dependencies can manually be installed using requirements.txt:**
+**Dependencies can be installed using requirements.txt:**
 ```
 pip install -r requirements.txt
 ```
