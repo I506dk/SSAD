@@ -14,7 +14,6 @@ import win32con
 import win32api
 import pywintypes
 
-
 # Secret Server executable
 # https://updates.thycotic.net/SecretServer/setup.exe
 
@@ -32,7 +31,6 @@ import pywintypes
 
 # Secret Server cli install
 # https://docs.thycotic.com/secrets/current/setup/installation/installing-silent-cli
-
 
 # Define the path to the registry key
 Startup_Key_Path = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce"
@@ -419,6 +417,7 @@ def install_secret_server(administrator_password, service_account, service_accou
     os.system(ss_command)
     
     # Print finish message along with url and credentials
+    # Restart server
 
     return
 
@@ -796,7 +795,6 @@ def parse():
     return parser.parse_args()
 
 
-
 # Beginning of main
 if __name__ == '__main__':
     # Get command line arguments
@@ -822,7 +820,7 @@ if __name__ == '__main__':
             if key == "admin_password":
                 argument_dictionary[key] = input("Please enter the password for the local administrator account in Secret Server: ")
                 
-    # Initial variables
+    # Initialize variables
     server = argument_dictionary["server"]
     database = argument_dictionary["database"]
     username = argument_dictionary["username"]
