@@ -422,7 +422,7 @@ def install_secret_server(administrator_password, service_account, service_accou
 'DatabaseIsUsingWindowsAuthentication=True DatabaseServer="{}" DatabaseName="{}" /l  "{}"'.format(path, administrator_password, service_account, service_account_password, sql_hostname, database_name, log_file)
     
     # Run installer
-    print("Installing Secret Server...")
+    print("\rInstalling Secret Server...")
     os.system(ss_command)
 
     # Print finish message along with url and credentials
