@@ -399,18 +399,21 @@ $dataSet.Tables | Format-Table -HideTableHeaders""".format(hostname, database)
 
 # Define a function to install secret server
 def install_secret_server(administrator_password, service_account, service_account_password, sql_hostname, database_name = "SecretServer"):
-
-    # url to setup.exe
+    # Url to setup.exe
     installer_url = "https://updates.thycotic.net/SecretServer/setup.exe"
     # Set download path
     installer = os.getcwd() + "\\setup.exe"
     # Download Secret Server
-    print("Downloading Secret Server installer...")
+    print("\nDownloading Secret Server installer...")
     download_file(installer_url, installer)
     
     # Create log folder
     log_directory = os.getcwd() + "\\Logs"
-    os.mkdir(log_directory)
+    if os.path.exists(log_directory) is True:
+            os.remove(log_directory)
+            os.mkdir(log_directory)
+    else:
+            os.mkdir(log_directory)
     
     # Output log file to current working directory
     log_file = log_directory + "\\ss-install.log"
@@ -422,7 +425,7 @@ def install_secret_server(administrator_password, service_account, service_accou
 'DatabaseIsUsingWindowsAuthentication=True DatabaseServer="{}" DatabaseName="{}" /l  "{}"'.format(installer, administrator_password, service_account, service_account_password, sql_hostname, database_name, log_file)
     
     # Run installer
-    print("\rInstalling Secret Server...")
+    print("\nInstalling Secret Server...")
     os.system(ss_command)
 
     # Print finish message along with url and credentials
