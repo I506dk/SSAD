@@ -422,8 +422,9 @@ def install_secret_server(administrator_password, service_account, service_accou
     os.system(ss_command)
 
     # Print finish message along with url and credentials
-    print("Secret Server installation log file located at '{}'".format(log_file))
+    print("\nSecret Server can be accessed at 'https://{}/SecretServer'".format(socket.getfqdn())
     print("\nAdministrator credentials for Secret Server are 'administrator' with password '{}'".format(administrator_password))
+    print("Secret Server installation log file located at '{}'".format(log_file))
     if os.path.exists(path) is True:
         os.remove(path)
 
