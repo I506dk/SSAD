@@ -39,3 +39,4 @@ pip install requests
 - [ ] Add option to create the necessary service accounts to run basica Secret Server functionality
 - [ ] Automate the setup of distributed engines on remote machines (if possible)
 - [ ] Automate the setup of RabbitMQ and site connectors
+- [ ] Add uninstall option if previous install is found
