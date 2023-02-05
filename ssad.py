@@ -408,8 +408,12 @@ def install_secret_server(administrator_password, service_account, service_accou
     print("Downloading Secret Server installer...")
     download_file(installer_url, path)
     
+    # Create log folder
+    log_directory = os.getcwd() + "\\Logs"
+    os.mkdir(log_directory)
+    
     # Output log file to current working directory
-    log_file = os.getcwd() + "\\ss-install.log"
+    log_file = log_directory + "\\ss-install.log"
 
     # Command for installing secret server silently
     ss_command = '{} -q -s InstallSecretServer=1 InstallPrivilegeManager=1 ' \
