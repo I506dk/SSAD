@@ -35,4 +35,7 @@ pip install requests
 ```
 
 ## To Do
-
+- [ ] Create function to remotely install and configure MS SQL (SQL express, and SQL Dev versions)
+- [ ] Add option to create the necessary service accounts to run basica Secret Server functionality
+- [ ] Automate the setup of distributed engines on remote machines (if possible)
+- [ ] Automate the setup of RabbitMQ and site connectors
