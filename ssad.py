@@ -403,10 +403,10 @@ def install_secret_server(administrator_password, service_account, service_accou
     # url to setup.exe
     installer_url = "https://updates.thycotic.net/SecretServer/setup.exe"
     # Set download path
-    path = os.getcwd() + "\\setup.exe"
+    installer = os.getcwd() + "\\setup.exe"
     # Download Secret Server
     print("Downloading Secret Server installer...")
-    download_file(installer_url, path)
+    download_file(installer_url, installer)
     
     # Create log folder
     log_directory = os.getcwd() + "\\Logs"
@@ -419,7 +419,7 @@ def install_secret_server(administrator_password, service_account, service_accou
     ss_command = '{} -q -s InstallSecretServer=1 InstallPrivilegeManager=1 ' \
 'SecretServerUserDisplayName="Administrator" SecretServerUserName="Administrator" SecretServerUserPassword="{}" ' \
 'SecretServerAppUserName="{}" SecretServerAppPassword="{}" ' \
-'DatabaseIsUsingWindowsAuthentication=True DatabaseServer="{}" DatabaseName="{}" /l  "{}"'.format(path, administrator_password, service_account, service_account_password, sql_hostname, database_name, log_file)
+'DatabaseIsUsingWindowsAuthentication=True DatabaseServer="{}" DatabaseName="{}" /l  "{}"'.format(installer, administrator_password, service_account, service_account_password, sql_hostname, database_name, log_file)
     
     # Run installer
     print("\rInstalling Secret Server...")
@@ -429,8 +429,9 @@ def install_secret_server(administrator_password, service_account, service_accou
     print("\nSecret Server can be accessed at 'https://{}/SecretServer'".format(socket.getfqdn()))
     print("\nAdministrator credentials for Secret Server are 'administrator' with password '{}'".format(administrator_password))
     print("Secret Server installation log file located at '{}'".format(log_file))
-    if os.path.exists(path) is True:
-        os.remove(path)
+    if os.path.exists(installer) is True:
+        os.chmod(installer, 0o777)
+        os.remove(installer)
 
     return
 
