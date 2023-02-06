@@ -55,7 +55,7 @@ Arguments can be specified to the script if an automated installation is wanted.
 
 - Examples: ```python SSAD.py -d``` or ```python SSAD.py --database```
 
-(***-u or --username***) - the username of the service account used to connect to the SQL database. Username should be in te format 'domain\username'.
+(***-u or --username***) - the username of the service account used to connect to the SQL database. Username should be in the format 'domain\username'.
 
 - Examples: ```python SSAD.py -u``` or ```python SSAD.py --username```
 
