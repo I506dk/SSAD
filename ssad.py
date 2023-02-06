@@ -794,7 +794,7 @@ def parse():
         help="The hostname of the SQL server to connect to.")
         
     # Add argument that contains the database name for Secret Server to use
-    parser.add_argument("-d", "--database", dest="database", action="store", default="SecretServer", type=str, required=False,
+    parser.add_argument("-d", "--database", dest="database", action="store", type=str, required=False,
         help="The name of the SQL database that Secret Server should use. Default is 'SecretServer'.")
         
     # Add argument that contains the username of the service account
