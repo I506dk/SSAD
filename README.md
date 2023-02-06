@@ -37,7 +37,7 @@ pip install requests
 ## Usage
 To run SSAD for the first time:
 ```
-python SSAD.py
+python ssad.py
 ```
 This will configure Secret Server, and require user interaction
 
@@ -45,33 +45,33 @@ Arguments can be specified to the script if an automated installation is wanted.
 
 (***-h or --help***) - will display the help screen.
 
-- Examples: ```python SSAD.py -h``` or ```python SSAD.py --help```
+- Examples: ```python ssad.py -h``` or ```python ssad.py --help```
 
 (***-s or --server***)  - the hostname of the SQL server to connect to.
 
-- Examples: ```python SSAD.py -s``` or ```python SSAD.py --server```
+- Examples: ```python ssad.py -s``` or ```python ssad.py --server```
 
 (***-d or --database***) - the name of the database Secret Server should use. ('SecretServer' is generally the default)
 
-- Examples: ```python SSAD.py -d``` or ```python SSAD.py --database```
+- Examples: ```python ssad.py -d``` or ```python ssad.py --database```
 
 (***-u or --username***) - the username of the service account used to connect to the SQL database. Username should be in the format 'domain\username'.
 
-- Examples: ```python SSAD.py -u``` or ```python SSAD.py --username```
+- Examples: ```python ssad.py -u``` or ```python ssad.py --username```
 
 (***-p or --password***) - the password for the service account being used to connect to SQL.
 
-- Examples: ```python SSAD.py -p``` or ```python SSAD.py --password```
+- Examples: ```python ssad.py -p``` or ```python ssad.py --password```
 
 (***-a or --administrator***) - the password for the local administrator account created in Secret Server.
 
-- Examples: ```python SSAD.py -a``` or ```python SSAD.py --administrator```
+- Examples: ```python ssad.py -a``` or ```python ssad.py --administrator```
 
 REMINDER - You can use multiple arguments as long as they aren't -h or --help (Those will default to showing the help screen then exiting)
 
 Example run using arguments:
 ```
-python SSAD.py -s my-sql-server -d SecretServer -u test.domain\service_account -p service_password -a admin_password
+python ssad.py -s my-sql-server -d SecretServer -u test.domain\service_account -p service_password -a admin_password
 ```
 
 ## To Do
