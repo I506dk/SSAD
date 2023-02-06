@@ -410,8 +410,13 @@ def install_secret_server(administrator_password, service_account, service_accou
     # Create log folder
     log_directory = os.getcwd() + "\\Logs"
     if os.path.exists(log_directory) is True:
-            os.remove(log_directory)
-            os.mkdir(log_directory)
+        # os.walk returns path, directories, and files.
+        # Just delete the files
+        for contents in os.walk(log_directory):
+            for file in contents[2]:
+                current_file = log_directory + "\\" + file
+                os.chmod(current_file, 0o777)
+                os.remove(current_file)
     else:
             os.mkdir(log_directory)
     
