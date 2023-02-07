@@ -208,7 +208,7 @@ def run_at_startup_remove(appname, user=False):
 
 
 # Define a function to restart windows
-def restart_windows():
+def restart_windows(arg_list):
     # Print warning message
     print("Restarting in 5 seconds...")
     # For any items that say "awaiting restart" change those to "passed"
@@ -230,12 +230,15 @@ def restart_windows():
     # Set script to re-run at boot with the arguments originally passed to it
     script_name = os.path.basename(__file__)
     # Remove script name/path from arguments
-    arguments = list(sys.argv)
-    for arg in arguments:
-        if script_name in arg:
-            arguments.remove(arg)
-    
-    run_script_at_startup_set(script_name, arguments, user=True)
+    if arg_list is None:
+        arguments = list(sys.argv)
+        for arg in arguments:
+            if script_name in arg:
+                arguments.remove(arg)
+                
+        run_script_at_startup_set(script_name, arguments, user=True)
+    else:
+        run_script_at_startup_set(script_name, arg_list, user=True)
     
     # Restart system
     os.system("shutdown /r /t 10")
@@ -757,14 +760,15 @@ def main_function(admin_password, username, password, hostname, database="Secret
                         # Write dotnet status to file
                         write_status("dotnet_48 = awaiting restart")
                         # Restart server
-                        restart_windows()
+                        restart_windows(["-s", hostname, "-d", database, "-u", username, "-p", password, "-a", admin_password])
+                        
                 else:
                     print("Installing Dotnet 4.8 on this server...")
                     install_dotnet()
                     # Write dotnet status to file
                     write_status("dotnet_48 = awaiting restart")
                     # Restart server
-                    restart_windows()         
+                    restart_windows(["-s", hostname, "-d", database, "-u", username, "-p", password, "-a", admin_password])        
         else:
             # Install dotnet framework 4.8 if not already installed.
             dotnet_check = subprocess.run('reg query "HKEY_LOCAL_MACHINE\\SOFTWARE\Microsoft\\NET Framework Setup\\NDP\\v4\\full" /v version', capture_output=True)
@@ -786,14 +790,14 @@ def main_function(admin_password, username, password, hostname, database="Secret
                     # Write dotnet status to file
                     write_status("dotnet_48 = awaiting restart")
                     # Restart server
-                    restart_windows()
+                    restart_windows(["-s", hostname, "-d", database, "-u", username, "-p", password, "-a", admin_password])
             else:
                 print("Installing Dotnet 4.8 on this server...")
                 install_dotnet()
                 # Write dotnet status to file
                 write_status("dotnet_48 = awaiting restart")
                 # Restart server
-                restart_windows()
+                restart_windows(["-s", hostname, "-d", database, "-u", username, "-p", password, "-a", admin_password])
 
         # Check to make sure all prerequisites passed
         if all(statuses[item] == "passed" for item in statuses):
