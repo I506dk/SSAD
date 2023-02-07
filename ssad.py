@@ -244,10 +244,9 @@ def restart_windows():
     script_name = os.path.basename(__file__)
     # Remove script name/path from arguments
     arguments = list(sys.argv)
-        for arg in arguments:
-            if script_name in arg:
-                arguments.remove(arg)
-    
+    for arg in arguments:
+        if script_name in arg:
+            arguments.remove(arg)
     
     run_script_at_startup_set(script_name, arguments, user=True)
     
