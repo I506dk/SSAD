@@ -100,9 +100,9 @@ Enable-WindowsOptionalFeature -Online -FeatureName IIS-ISAPIExtensions;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-ISAPIFilter;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpCompressionStatic;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-ASPNET45"""
-     parse_command(iis_script)
+    parse_command(iis_script)
      
-     return
+    return
     
     
 # Define a function to download and install microsoft sql dev
