@@ -48,12 +48,13 @@ def parse_command(command):
 # Define a function to install dotnet 4.8 using a powershell script
 # Requires a restart
 def install_dotnet():
-    dotnet_script = """$save_path = "$Env:Temp\ndp48-web.exe";
-Start-BitsTransfer -Source 'https://go.microsoft.com/fwlink/?linkid=2088631' -Destination $save_path;
+    dotnet_script = """[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;
+$save_path = "$Env:Temp\\ndp48-web.exe";
+Invoke-WebRequest "https://go.microsoft.com/fwlink/?linkid=2088631" -OutFile $save_path;
 Start-Process -FilePath $save_path -Args "/q /norestart /ChainingPackage ADMINDEPLOYMENT" -Verb RunAs -Wait;
 Remove-Item $save_path"""
     parse_command(dotnet_script)
-    
+
     return
     
 
@@ -123,7 +124,7 @@ def write_status(status):
 
 
 # Define a function to run an executable at boot
-def run_at_startup_set(appname, path=None, user=False):
+def run_at_startup_set(appname, arguments, path=None, user=False):
     # Store the entry in the registry for running the application at startup
     # Open the registry key path for applications that are run at login
     key = win32api.RegOpenKeyEx(
@@ -146,8 +147,14 @@ def run_at_startup_set(appname, path=None, user=False):
             win32api.RegCloseKey(key)
             return
         i += 1
+        
+    # Add arguments to the key
+    run_parameters = path or win32api.GetModuleFileName(0)
+    for arg in arguments:
+        run_parameters += ' "' + str(arg) + '"'
+    
     # Create a new key
-    win32api.RegSetValueEx(key, appname, 0, win32con.REG_SZ, path or win32api.GetModuleFileName(0))
+    win32api.RegSetValueEx(key, appname, 0, win32con.REG_SZ, run_parameters)
     # Close the key
     win32api.RegCloseKey(key)
     
@@ -155,10 +162,11 @@ def run_at_startup_set(appname, path=None, user=False):
 
 
 # Define a function to run a script at boot
-def run_script_at_startup_set(appname, user=False):
+def run_script_at_startup_set(appname, arguments, user=False):
     # Like run_at_startup_set(), but for source code files
     run_at_startup_set(
         appname,
+        arguments,
         # Set the interpreter path (returned by GetModuleFileName())
         # followed by the path of the current Python file (__file__).
         '{} "{}"'.format(win32api.GetModuleFileName(0), __file__),
@@ -188,6 +196,7 @@ def restart_windows():
     # Print warning message
     print("Restarting in 5 seconds...")
     # For any items that say "awaiting restart" change those to "passed"
+    progress_file = os.getcwd() + "\\progress.txt"
     if os.path.exists(progress_file) is True:
         with open(progress_file, "r+") as file:
             content = file.readlines()
@@ -202,11 +211,21 @@ def restart_windows():
             else:
                 file.write(line)
     
-    # Set script to re-run at boot
-    run_script_at_startup_set(os.path.basename(__file__), user=True)
+    # Set script to re-run at boot with the arguments originally passed to it
+    script_name = os.path.basename(__file__)
+    # Remove script name/path from arguments
+    arguments = list(sys.argv)
+        for arg in arguments:
+            if script_name in arg:
+                arguments.remove(arg)
+    
+    
+    run_script_at_startup_set(script_name, arguments, user=True)
     
     # Restart system
     os.system("shutdown /r /t 10")
+    print("Awaiting restart.")
+    exit()
     
     return
     
