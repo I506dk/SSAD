@@ -70,6 +70,35 @@ New-IISSiteBinding -Name "Default Web Site" -BindingInformation "*:443:" -Protoc
     return
     
     
+def install_iis():
+    iis_script = """Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServerRole;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServer;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-CommonHttpFeatures;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpErrors;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpRedirect;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-ApplicationDevelopment;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-HealthAndDiagnostics;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpLogging;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-LoggingLibraries;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-RequestMonitor;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpTracing;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-Security;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-RequestFiltering;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-Performance;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-ManagementConsole;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServerManagementTools;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-BasicAuthentication;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-WindowsAuthentication;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-StaticContent;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-DefaultDocument;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebSockets;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-ApplicationInit;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpCompressionStatic"""
+     parse_command(iis_script)
+     
+     return
+    
+    
 # Define a function to download and install microsoft sql dev
 def install_sql_dev():
     sql_script = """ """
