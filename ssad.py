@@ -214,7 +214,7 @@ def run_at_startup_remove(appname, user=False):
 # Define a function to restart windows
 def restart_windows(arg_list):
     # Print warning message
-    print("Restarting in 5 seconds...")
+    print("Restarting in 10 seconds...")
     # For any items that say "awaiting restart" change those to "passed"
     progress_file = os.getcwd() + "\\progress.txt"
     if os.path.exists(progress_file) is True:
