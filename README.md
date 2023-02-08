@@ -35,7 +35,7 @@ pip install requests
 ```
 
 ## Usage
-To run SSAD for the first time:
+To run ssad.py for the first time:
 ```
 python ssad.py
 ```
