@@ -60,7 +60,8 @@ Remove-Item $save_path"""
 
 # Define a function to create https binding using a powershell script
 def create_binding():
-    binding_script = """$fqdn = [System.Net.Dns]::GetHostByName($env:computerName).hostname;
+    binding_script = """Import-Module IISAdministration;
+$fqdn = [System.Net.Dns]::GetHostByName($env:computerName).hostname;
 $cert_path = "cert:\LocalMachine\My";
 $certificate = New-SelfSignedCertificate -DnsName $fqdn -CertStoreLocation $cert_path;
 $certificate_thumbprint = $certificate.Thumbprint;
@@ -71,7 +72,10 @@ New-IISSiteBinding -Name "Default Web Site" -BindingInformation "*:443:" -Protoc
     
     
 def install_iis():
-    iis_script = """Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServerRole;
+    iis_script = """[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;
+Install-WindowsFeature -Name Web-Server -IncludeManagementTools -Verbose;
+Install-Module -Name IISAdministration -MinimumVersion 1.1.0.0 -Force;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServerRole;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServer;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-CommonHttpFeatures;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpErrors;
