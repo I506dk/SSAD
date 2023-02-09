@@ -474,7 +474,7 @@ def install_secret_server(administrator_password, service_account, service_accou
     
     # Run installer
     print("\nInstalling Secret Server...")
-    os.system(ss_command)
+    subprocess.check_output(ss_command)
 
     # Print finish message along with url and credentials
     print("\nSecret Server can be accessed at 'https://{}/SecretServer'".format(socket.getfqdn()))
