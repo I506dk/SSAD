@@ -50,7 +50,7 @@ jobs:
           # Just set tag
           #just-tag: # optional
           # Token with credentials for repository
-          gh-token: ${{ github.token }}
+          gh-token: ${{ secrets.GITHUB_TOKEN }}
           # Tag name for append in commit
           #append-tag: # optional
           # Set append-tag name to uppercase
