@@ -27,7 +27,7 @@ jobs:
           branch: main
           major_pattern: "BREAKING CHANGE:"
           minor_pattern: "feat:"
-          format: "v${major}.${minor}.${patch}" #-prerelease${increment}"
+          format: "v${major}.${minor}.${patch}"
           
       # Create version tag
       - name: Create Tag
@@ -40,22 +40,23 @@ jobs:
       # Create tag output
       - name: Set output
         id: tag_out
-        run: echo "tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
+      #  run: echo "tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
+        run:  echo "${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
         
-      - name: Check output
-        env:
-          RELEASE_VERSION: ${{ steps.tag_out.outputs.tag }}
-        run: |
-          echo $RELEASE_VERSION
-          echo ${{ steps.tag_out.outputs.tag }}
+      #- name: Check output
+      #  env:
+      #    RELEASE_VERSION: ${{ steps.tag_out.outputs.tag }}
+      #  run: |
+      #    echo $RELEASE_VERSION
+      #    echo ${{ steps.tag_out.outputs.tag }}
           
           
       # Create new release
-      - name: Create Release
+      #- name: Create Release
         # You may pin to the exact commit or the version.
         # uses: ncipollo/release-action@a2e71bdd4e7dab70ca26a852f29600c98b33153e
-        uses: ncipollo/release-action@v1.12.0
-        with:
+      #  uses: ncipollo/release-action@v1.12.0
+      #  with:
           # An optional flag which indicates if we should update a release if it already exists. Defaults to false.
           #allowUpdates: # optional, default is 
           # An optional flag which indicates if artifact read or upload errors should fail the build.
@@ -103,15 +104,15 @@ jobs:
           # Indicates if existing release artifacts should be replaced. Defaults to true.
           #replacesArtifacts: # optional, default is true
           # Optionally specify the repo where the release should be generated. Defaults to current repo
-          repo: ${{ env.REPO }}
+      #    repo: ${{ env.REPO }}
           # When skipIfReleaseExists is enabled the action will be skipped if a non-draft release already exists for the provided tag.
           #skipIfReleaseExists: # optional, default is false
           # An optional tag for the release. If this is omitted the git ref will be used (if it is a tag).
           
           #tag: ${{ steps.create_tag.outputs.tag }} # optional, default is 
-          tag: ${{ steps.tag_out.outputs.tag }}
+      #    tag: ${{ steps.tag_out.outputs.tag }}
           
           # The Github token.
-          token: ${{ github.token }}
+      #    token: ${{ github.token }}
           # When allowUpdates is enabled, this will fail the action if the release it is updating is not a draft or a prerelease.
           #updateOnlyUnreleased: # optional, default is false
