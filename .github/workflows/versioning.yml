@@ -1,113 +1,69 @@
-name: Create New Release
+name: Release
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
 
 jobs:
-  scanBuildPublish:
+  release:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3 
-        # Fetch all commits 
-        # with:
-        #   fetch-depth: 0
+      - uses: actions/checkout@v1
 
- # Semantic Versioning 5
-      # - name: Semantic Versioning
-      #   id: versioning
-      #   uses: paulhatch/semantic-version@v5.0.2
-      #   with:
-      #     branch: main
-      #     tag_prefix: "v"
-      #     major_pattern: "BREAKING CHANGE: "
-      #     minor_pattern: "feature:"
-      #     version_format: "${major}.${minor}.${increment}"
-
-      - name: Bump version and push tag
-        id: versioning
-        uses: anothrNick/github-tag-action@1.55.0 
+      - name: semantic-release
+        id: semantic
+        uses: ./
+        with:
+          branches: |
+            [
+              '+([0-9])?(.{+([0-9]),x}).x',
+              'main',
+              'next',
+              'next-major',
+              {
+                name: 'beta',
+                prerelease: true
+              },
+              {
+                name: 'alpha',
+                prerelease: true
+              }
+            ]
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          WITH_V: true
-          DEFAULT_BUMP: PATCH
-          INITIAL_VERSION: 1.0.0
 
-      #- name: Setup-Node  
-      #  uses: actions/setup-node@v3
-      #- run: npm ci
-      #- run: npm run build --if-present
-
-      # - name: Run Snyk PYTHON to check for vulnerabilities
-      #   uses: snyk/actions/python-3.8@master
-      #   env:
-      #     SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      #   with:
-      #     command: test
-
-      # - name: Run Snyk NODE to check for vulnerabilities
-      #   uses: snyk/actions/node@master
-      #   env:
-      #     SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-
-      #- name: SonarCloud Scan
-      #  uses: sonarsource/sonarcloud-github-action@master
-      #  env:
-      #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #    SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }} 
-      #  with:
-      #    args: -X
-
-        # Check the Quality Gate status.
-      #- name: SonarQube Quality Gate check
-      #  id: sonarqube-quality-gate-check
-      #  uses: sonarsource/sonarqube-quality-gate-action@master
-        # Force to fail step after specific time.
-      #  timeout-minutes: 5
-      #  env:
-      #    SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      # Optionally you can use the output from the Quality Gate in another step.
-      # The possible outputs of the `quality-gate-status` variable are `PASSED`, `WARN` or `FAILED`.
-
-      #- name: "Example show SonarQube Quality Gate Status value"
-      #  run: echo "The Quality Gate status is ${{ steps.sonarqube-quality-gate-check.outputs.quality-gate-status }}"
-
-      #- name: Log in to the Container registry
-      #  uses: docker/login-action@v2
-      #  with:
-      #    username: ${{ secrets.DOCKER_USER_NAME }}
-      #    password: ${{ secrets.DOCKER_PASSWORD }} 
-      #github.run_number
-      #- name: Build Docker image
-      #  run: docker build -t michaln28/alpine-get-started:${{ steps.versioning.outputs.tag }} .
-
-      #- name: Run Snyk to check Docker image for vulnerabilities
-      #  uses: snyk/actions/docker@master
-      #  env:
-      #    SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      #  with:
-      #    image: michaln28/alpine-get-started:${{ steps.versioning.outputs.tag }}
-      #    args: --severity-threshold=high
-      #- name: Push Docker image
-      #  run: docker push michaln28/alpine-get-started:${{ steps.versioning.outputs.tag }}
-      
-      # Release
-      - name: Release GitHub Actions
-        uses: technote-space/release-github-actions@v6
-      - name: Echo commit sha to file
+      - name: test output
+        if: steps.semantic.outputs.new-release-published == 'true'
         run: |
-          echo ${{ github.sha }} > Release.txt
-          echo ${{ github.ref }} >> Release.txt
-      - name: Test
-        run: cat Release.txt
-      - name: Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ steps.versioning.outputs.tag }}
-        # if: startsWith(github.ref, 'refs/tags/')
-        # with:
-        #   files: Release.txt
+          echo "$OUTPUTS"
+          echo "$NEW_RELEASE_PUBLISHED"
+          echo "$RELEASE_MAJOR"
+          echo "$RELEASE_MINOR"
+          echo "$RELEASE_PATCH"
+        env:
+          OUTPUTS: ${{ toJson(steps.semantic.outputs) }}
 
-        
-        
+      - name: docker login
+        run: |
+          echo "$GCR_TOKEN" | docker login ghcr.io -u codfish --password-stdin
+        env:
+          GCR_TOKEN: ${{ secrets.GCR_TOKEN }}
+
+      # Dockerhub is auto synced with the repo, no need to explicitly deploy
+      - name: build and push latest docker image to GCR
+        run: |
+          docker build -t ghcr.io/codfish/semantic-release-action:latest .
+          docker push ghcr.io/codfish/semantic-release-action:latest
+
+      - name: push docker images for releases to GCR
+        if: steps.semantic.outputs.new-release-published == 'true'
+        run: |
+          docker tag ghcr.io/codfish/semantic-release-action ghcr.io/codfish/semantic-release-action:$VERSION_TAG
+          docker tag ghcr.io/codfish/semantic-release-action ghcr.io/codfish/semantic-release-action:$MAJOR_TAG
+          docker push ghcr.io/codfish/semantic-release-action:$VERSION_TAG
+          docker push ghcr.io/codfish/semantic-release-action:$MAJOR_TAG
+        env:
+          VERSION_TAG: v${{ steps.semantic.outputs.release-version }}
+          MAJOR_TAG: v${{ steps.semantic.outputs.release-major }}
