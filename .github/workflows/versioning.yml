@@ -26,7 +26,7 @@ jobs:
           tag_prefix: "v"
           major_pattern: "BREAKING CHANGE:"
           minor_pattern: "feat:"
-          format: "v${major}.${minor}.${patch}" #-prerelease${increment}"
+          format: "${major}.${minor}.${patch}" #-prerelease${increment}"
           
       # Create version tag
       - name: Create Tag
