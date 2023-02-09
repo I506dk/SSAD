@@ -41,7 +41,7 @@ jobs:
       - name: Set output
         id: tag_out
       #  run: echo "tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
-        run:  echo "${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        run:  echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
         
       #- name: Check output
       #  env:
