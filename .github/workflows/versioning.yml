@@ -5,8 +5,8 @@ on:
       - main
 
 env:
-  DOCKER_USERNAME: thedoorknobster
-  REPO: thedoorknobster/sample-app
+  DOCKER_USERNAME: i506dk
+  REPO: i506dk/SSAD
 
 jobs:
   docker:
