@@ -85,7 +85,7 @@ Enable-WindowsOptionalFeature -Online -FeatureName IIS-ApplicationDevelopment;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServerManagementTools;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-ManagementConsole;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-BasicAuthentication;
-Enable-WindowsOptionalFeature -Online -FeatureName IIS-WindowsAuthentication;"""
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-WindowsAuthentication"""
     parse_command(iis_script)
      
     return
