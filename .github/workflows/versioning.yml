@@ -1,69 +1,52 @@
-name: Release
-
+name: CI
 on:
   push:
     branches:
       - main
 
+env:
+  DOCKER_USERNAME: I506dk
+  REPO: I506dk/SSAD
+
 jobs:
-  release:
+  docker:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v1
-
-      - name: semantic-release
-        id: semantic
-        uses: ./
+      - name: Checkout
+        uses: actions/checkout@v2
         with:
-          branches: |
-            [
-              '+([0-9])?(.{+([0-9]),x}).x',
-              'main',
-              'next',
-              'next-major',
-              {
-                name: 'beta',
-                prerelease: true
-              },
-              {
-                name: 'alpha',
-                prerelease: true
-              }
-            ]
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Fetch all commits
+          fetch-depth: 0
 
-      - name: test output
-        if: steps.semantic.outputs.new-release-published == 'true'
-        run: |
-          echo "$OUTPUTS"
-          echo "$NEW_RELEASE_PUBLISHED"
-          echo "$RELEASE_MAJOR"
-          echo "$RELEASE_MINOR"
-          echo "$RELEASE_PATCH"
-        env:
-          OUTPUTS: ${{ toJson(steps.semantic.outputs) }}
+      - name: Semantic versioning
+        id: versioning
+        uses: PaulHatch/semantic-version@v4.0.2
+        with:
+          branch: main
+          tag_prefix: "v"
+          major_pattern: "BREAKING CHANGE:"
+          minor_pattern: "feat:"
+          format: "v${major}.${minor}.${patch}-prerelease${increment}"
 
-      - name: docker login
-        run: |
-          echo "$GCR_TOKEN" | docker login ghcr.io -u codfish --password-stdin
-        env:
-          GCR_TOKEN: ${{ secrets.GCR_TOKEN }}
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # Dockerhub is auto synced with the repo, no need to explicitly deploy
-      - name: build and push latest docker image to GCR
-        run: |
-          docker build -t ghcr.io/codfish/semantic-release-action:latest .
-          docker push ghcr.io/codfish/semantic-release-action:latest
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          tags: ${{ env.REPO }}:latest,${{ env.REPO }}:${{ steps.versioning.outputs.version }}
 
-      - name: push docker images for releases to GCR
-        if: steps.semantic.outputs.new-release-published == 'true'
-        run: |
-          docker tag ghcr.io/codfish/semantic-release-action ghcr.io/codfish/semantic-release-action:$VERSION_TAG
-          docker tag ghcr.io/codfish/semantic-release-action ghcr.io/codfish/semantic-release-action:$MAJOR_TAG
-          docker push ghcr.io/codfish/semantic-release-action:$VERSION_TAG
-          docker push ghcr.io/codfish/semantic-release-action:$MAJOR_TAG
+      - name: Create Release
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/create-release@v1
         env:
-          VERSION_TAG: v${{ steps.semantic.outputs.release-version }}
-          MAJOR_TAG: v${{ steps.semantic.outputs.release-major }}
+          GITHUB_TOKEN: ${{ secrets.github_token }}
+        with:
+          tag_name: ${{ steps.versioning.outputs.version }}
+          release_name: ${{ steps.versioning.outputs.version }}
+          prerelease: true
