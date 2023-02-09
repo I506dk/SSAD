@@ -46,9 +46,8 @@ jobs:
       - name: Check output
         #env:
         #  RELEASE_VERSION: ${{ steps.tag_out.outputs.tag }}
-        run: |
-          #  echo $RELEASE_VERSION
-          echo ${{ steps.tag_out.outputs.tag }}
+        run: echo ${{ steps.tag_out.outputs.tag }}
+          # echo ${{ steps.tag_out.outputs.tag }}
           
           
       # Create new release
