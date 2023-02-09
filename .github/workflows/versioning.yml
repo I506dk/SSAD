@@ -29,24 +29,39 @@ jobs:
           minor_pattern: "feat:"
           format: "v${major}.${minor}.${patch}"
           
-      # Create version tag
-      - name: Create Tag
-        id: create_tag
-        uses: negz/create-tag@v1
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
-          version: ${{ steps.versioning.outputs.version }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          #body: |
+          #  Changes in this Release
+          #  - First Change
+          #  - Second Change
+          draft: false
+          prerelease: false
+          
+      # Create version tag
+      #- name: Create Tag
+      #  id: create_tag
+      #  uses: negz/create-tag@v1
+      #  with:
+      #    version: ${{ steps.versioning.outputs.version }}
+      #    token: ${{ secrets.GITHUB_TOKEN }}
           
       # Create tag output
-      - name: Set output
-        id: tag_out
+      #- name: Set output
+      #  id: tag_out
       #  run: echo "tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
-        run:  echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      #  run:  echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
         
-      - name: Check output
+      #- name: Check output
         #env:
         #  RELEASE_VERSION: ${{ steps.tag_out.outputs.tag }}
-        run: echo ${{ steps.tag_out.outputs.tag }}
+      #  run: echo ${{ steps.tag_out.outputs.tag }}
           # echo ${{ steps.tag_out.outputs.tag }}
           
           
