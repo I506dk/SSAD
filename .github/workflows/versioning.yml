@@ -33,7 +33,7 @@ jobs:
         uses: negz/create-tag@v1
         with:
           #version: ${{ steps.versioning.version }}
-          version: "${steps.versioning.major}.${steps.versioning.minor}.${steps.versioning.patch}"
+          version: "${{steps.versioning.major}}.${{steps.versioning.minor}}.${{steps.versioning.patch}}"
           #message: ${{ github.event.inputs.message }}
           token: ${{ secrets.GITHUB_TOKEN }}
       
