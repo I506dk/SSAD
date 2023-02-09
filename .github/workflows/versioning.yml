@@ -39,17 +39,17 @@ jobs:
       #    test-branch: main
       #    dev-branch: main
       
-      - name: Set environment variables
-        run: |
-          cat >> $GITHUB_ENV << EOF
-          VERSION=${GITHUB_REF##*/}
-          EOF
+      #- name: Set environment variables
+      #  run: |
+      #    cat >> $GITHUB_ENV << EOF
+      #    VERSION=${GITHUB_REF##*/}
+      #    EOF
           
       # Create version tag
       - name: Create Tag
         uses: negz/create-tag@v1
         with:
-          version: ${{ steps.versioning.outputs }}
+          version: ${{ steps.versioning.version }}
           #version: ${{ env.VERSION }}
           #message: ${{ github.event.inputs.message }}
           token: ${{ secrets.GITHUB_TOKEN }}
