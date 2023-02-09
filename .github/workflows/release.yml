@@ -4,9 +4,9 @@ on:
     tags:
       - 'v*'
 
-env:
-  DOCKER_USERNAME: i506dk
-  REPO: i506dk/ssad
+#env:
+#  DOCKER_USERNAME: i506dk
+#  REPO: i506dk/ssad
 
 jobs:
   docker:
