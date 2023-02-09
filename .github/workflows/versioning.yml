@@ -6,7 +6,7 @@ on:
 
 env:
   DOCKER_USERNAME: i506dk
-  REPO: i506dk/SSAD
+  REPO: i506dk/ssad
 
 jobs:
   docker:
