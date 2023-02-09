@@ -105,7 +105,7 @@ jobs:
           #skipIfReleaseExists: # optional, default is false
           # An optional tag for the release. If this is omitted the git ref will be used (if it is a tag).
           
-          tag: ${{ steps.create_tag.outputs }} # optional, default is 
+          tag: ${{ steps.create_tag.outputs.tag }} # optional, default is 
           #tag: ${{ steps.tag_out.outputs.tag }}
           
           # The Github token.
