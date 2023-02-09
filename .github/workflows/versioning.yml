@@ -34,6 +34,8 @@ jobs:
       #    password: ${{ secrets.DOCKER_PASSWORD }}
       - name: tag-version
         uses: juliansangillo/tag-version@v1.5
+        with:
+          production-branch: main
 
       #- name: Build and push
       #  uses: docker/build-push-action@v2
