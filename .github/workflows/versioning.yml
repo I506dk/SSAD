@@ -38,11 +38,24 @@ jobs:
       #    production-branch: main
       #    test-branch: main
       #    dev-branch: main
+      
+      - name: Set environment variables
+        run: |
+          cat >> $GITHUB_ENV << EOF
+          VERSION=${GITHUB_REF##*/}
+          EOF
           
       # Create version tag
       - name: Create Tag
         uses: negz/create-tag@v1
         with:
-          version: ${{ steps.versioning.outputs }}
+          #version: ${{ steps.versioning.outputs }}
+          version: ${{ env.VERSION }}
           #message: ${{ github.event.inputs.message }}
           token: ${{ secrets.GITHUB_TOKEN }}
+      
+      #- name: Build and push
+      #  uses: docker/build-push-action@v2
+      #  with:
+      #    push: true
+      #    tags: ${{ env.REPO }}:latest,${{ env.REPO }}:${{ env.VERSION }}
