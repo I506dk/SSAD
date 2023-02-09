@@ -71,7 +71,8 @@ New-IISSiteBinding -Name "Default Web Site" -BindingInformation "*:443:" -Protoc
     
     return
     
-    
+
+# Define a function to install necessary components of iis
 def install_iis():
     iis_script = """[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;
 Install-WindowsFeature -Name Web-Server -IncludeManagementTools;
