@@ -43,12 +43,12 @@ jobs:
       #  run: echo "tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
         run:  echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
         
-      #- name: Check output
-      #  env:
-      #    RELEASE_VERSION: ${{ steps.tag_out.outputs.tag }}
-      #  run: |
-      #    echo $RELEASE_VERSION
-      #    echo ${{ steps.tag_out.outputs.tag }}
+      - name: Check output
+        #env:
+        #  RELEASE_VERSION: ${{ steps.tag_out.outputs.tag }}
+        run: |
+          #  echo $RELEASE_VERSION
+          echo ${{ steps.tag_out.outputs.tag }}
           
           
       # Create new release
