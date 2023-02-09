@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
 env:
   REPO: i506dk/ssad
 
@@ -36,15 +38,16 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           
       # Create tag output
-      #- name: Set output
-      #  id: tag_out
-      #  run: echo "tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
-      #- name: Check output
-      #  env:
-      #    RELEASE_VERSION: ${{ steps.tag_out.outputs.tag }}
-      #  run: |
-      #    echo $RELEASE_VERSION
-      #    echo ${{ steps.vars.outputs.tag }}
+      - name: Set output
+        id: tag_out
+        run: echo "tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
+        
+      - name: Check output
+        env:
+          RELEASE_VERSION: ${{ steps.tag_out.outputs.tag }}
+        run: |
+          echo $RELEASE_VERSION
+          echo ${{ steps.tag_out.outputs.tag }}
           
           
       # Create new release
@@ -105,8 +108,8 @@ jobs:
           #skipIfReleaseExists: # optional, default is false
           # An optional tag for the release. If this is omitted the git ref will be used (if it is a tag).
           
-          tag: ${{ steps.create_tag.outputs.tag }} # optional, default is 
-          #tag: ${{ steps.tag_out.outputs.tag }}
+          #tag: ${{ steps.create_tag.outputs.tag }} # optional, default is 
+          tag: ${{ steps.tag_out.outputs.tag }}
           
           # The Github token.
           token: ${{ github.token }}
