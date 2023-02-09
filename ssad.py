@@ -305,7 +305,7 @@ def previous_install_check():
     # If 2/3 of the checks come back positive, assume Secret Server is already installed
     if validation_count >= 2:
         print("\n" + str(validation_count) + " / 3 validation checks came back positive indicating that Secret Server is currently installed.")
-        print("Exiting...")
+        input("Exiting...")
         cleanup()
         exit()
     else:
@@ -432,7 +432,7 @@ $dataSet.Tables | Format-Table -HideTableHeaders""".format(hostname, database)
     if (sql_connection_pass is True) and (sql_permission_pass is True):
         print("SQL validation passed. Continuing...")
     else:
-        print("SQL validation failed. Exiting...")
+        input("SQL validation failed. Exiting...")
         cleanup()
         exit()
     
