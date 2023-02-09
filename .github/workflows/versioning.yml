@@ -36,6 +36,8 @@ jobs:
         uses: juliansangillo/tag-version@v1.5
         with:
           production-branch: main
+          test-branch: main
+          dev-branch: main
 
       #- name: Build and push
       #  uses: docker/build-push-action@v2
