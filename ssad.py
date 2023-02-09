@@ -1,4 +1,4 @@
-# Python script to automate the install of Secret Server
+# Python script to automate the install of Secret Server and privilege manager
 import re
 import os
 import sys
