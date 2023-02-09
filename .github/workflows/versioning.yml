@@ -106,7 +106,7 @@ jobs:
           # An optional tag for the release. If this is omitted the git ref will be used (if it is a tag).
           
           #tag: ${{ steps.create_tag.outputs }} # optional, default is 
-          tags: ${{ steps.tag_out.outputs.tag }}
+          tag: ${{ steps.tag_out.outputs.tag }}
           
           # The Github token.
           token: ${{ github.token }}
