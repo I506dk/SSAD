@@ -60,7 +60,8 @@ Remove-Item $save_path"""
 
 # Define a function to create https binding using a powershell script
 def create_binding():
-    binding_script = """Import-Module IISAdministration;
+    binding_script = """Import-Module WebAdministration;
+Import-Module IISAdministration;
 $fqdn = [System.Net.Dns]::GetHostByName($env:computerName).hostname;
 $cert_path = "cert:\LocalMachine\My";
 $certificate = New-SelfSignedCertificate -DnsName $fqdn -CertStoreLocation $cert_path;
