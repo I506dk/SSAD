@@ -1,94 +1,113 @@
-name: Courier
+name: Create New Release
 
 on:
   push:
-    branches:
-      - main
-
-env:
-  DESTINATION_REPO: 'i506dk/SSAD'
-  DESTINATION_BRANCH: 'main'
-
+    branches: [ "main" ]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest    
-
+  scanBuildPublish:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-         
-      - name: Version Codebase
-        id: version
-        uses: paulhatch/semantic-version@v5.0.2
-        with:
-          tag_prefix: 'v'
+      - name: Checkout code
+        uses: actions/checkout@v3 
+        # Fetch all commits 
+        # with:
+        #   fetch-depth: 0
 
-      - name: Version Name
-        id: semver
-        run: |
-          major="${{steps.version.outputs.major}}"
-          minor="${{steps.version.outputs.minor}}"
-          patch="${{steps.version.outputs.patch}}"
-          echo "VERSION=$major.$minor.$patch" >> $GITHUB_ENV
+ # Semantic Versioning 5
+      # - name: Semantic Versioning
+      #   id: versioning
+      #   uses: paulhatch/semantic-version@v5.0.2
+      #   with:
+      #     branch: main
+      #     tag_prefix: "v"
+      #     major_pattern: "BREAKING CHANGE: "
+      #     minor_pattern: "feature:"
+      #     version_format: "${major}.${minor}.${increment}"
 
-
-      - name: Create Local Release
-        id: create_release
-        uses: actions/create-release@v1
+      - name: Bump version and push tag
+        id: versioning
+        uses: anothrNick/github-tag-action@1.55.0 
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ env.VERSION }}
-          release_name: Release v${{ env.VERSION }}
-          body: |
-            Changes in this Release:
-              - First Change
-              - Second Change
+          WITH_V: true
+          DEFAULT_BUMP: PATCH
+          INITIAL_VERSION: 1.0.0
 
-          draft: true
-          prerelease: false
+      #- name: Setup-Node  
+      #  uses: actions/setup-node@v3
+      #- run: npm ci
+      #- run: npm run build --if-present
 
+      # - name: Run Snyk PYTHON to check for vulnerabilities
+      #   uses: snyk/actions/python-3.8@master
+      #   env:
+      #     SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      #   with:
+      #     command: test
 
-      - name: Push to Remote
-        uses: ad-m/github-push-action@master
-        with: 
-          force: true
-          branch: Release-${{ env.VERSION }}
-          github_token: ${{ secrets.ACCESS_TOKEN }}
-          repository: ${{ env.DESTINATION_REPO }} 
+      # - name: Run Snyk NODE to check for vulnerabilities
+      #   uses: snyk/actions/node@master
+      #   env:
+      #     SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
-      #- name: Open PR 
-      #  uses: repo-sync/pull-request@v2 
+      #- name: SonarCloud Scan
+      #  uses: sonarsource/sonarcloud-github-action@master
+      #  env:
+      #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #    SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }} 
       #  with:
-      #    github_token: ${{ secrets.ACCESS_TOKEN }}
-      #    source_branch: Release-${{ env.VERSION }}
-      #    destination_branch: ${{ env. DESTINATION_BRANCH }} 
-      #    destination_repository: ${{ env.DESTINATION_REPO }} 
-      #    pr_title: "Release-${{ env.VERSION }}"
-      #    pr_body: |
-      #      :crown: *An automated PR*
-            
-            # Things Accomplished:
-      #      Automated PR Creation in Public Remote Repository
-           
-      #      v${{ env.VERSION }}
-            
-            # Next Things to Test
-      #      - must publish a new tag with the semver so the following
-      #        publish with do it correctly!
+      #    args: -X
 
-      #    pr_label: 'release'
-          
-     
-      - name: output-url
-        run: echo ${{steps.open-pr.outputs.pr_url}}
-      - name: output-number
-        run: echo ${{steps.open-pr.outputs.pr_number}}
-      - name: output-created
-        run: echo ${{steps.open-pr.outputs.pr_created}}
-      #- name: output-has-changed-files 
-      #  run: echo ${{steps.open-pr.outputs.has_changed_files}}
+        # Check the Quality Gate status.
+      #- name: SonarQube Quality Gate check
+      #  id: sonarqube-quality-gate-check
+      #  uses: sonarsource/sonarqube-quality-gate-action@master
+        # Force to fail step after specific time.
+      #  timeout-minutes: 5
+      #  env:
+      #    SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      # Optionally you can use the output from the Quality Gate in another step.
+      # The possible outputs of the `quality-gate-status` variable are `PASSED`, `WARN` or `FAILED`.
+
+      #- name: "Example show SonarQube Quality Gate Status value"
+      #  run: echo "The Quality Gate status is ${{ steps.sonarqube-quality-gate-check.outputs.quality-gate-status }}"
+
+      #- name: Log in to the Container registry
+      #  uses: docker/login-action@v2
+      #  with:
+      #    username: ${{ secrets.DOCKER_USER_NAME }}
+      #    password: ${{ secrets.DOCKER_PASSWORD }} 
+      #github.run_number
+      #- name: Build Docker image
+      #  run: docker build -t michaln28/alpine-get-started:${{ steps.versioning.outputs.tag }} .
+
+      #- name: Run Snyk to check Docker image for vulnerabilities
+      #  uses: snyk/actions/docker@master
+      #  env:
+      #    SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      #  with:
+      #    image: michaln28/alpine-get-started:${{ steps.versioning.outputs.tag }}
+      #    args: --severity-threshold=high
+      #- name: Push Docker image
+      #  run: docker push michaln28/alpine-get-started:${{ steps.versioning.outputs.tag }}
+      
+      # Release
+      - name: Release GitHub Actions
+        uses: technote-space/release-github-actions@v6
+      - name: Echo commit sha to file
+        run: |
+          echo ${{ github.sha }} > Release.txt
+          echo ${{ github.ref }} >> Release.txt
+      - name: Test
+        run: cat Release.txt
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.versioning.outputs.tag }}
+        # if: startsWith(github.ref, 'refs/tags/')
+        # with:
+        #   files: Release.txt
+
+        
+        
