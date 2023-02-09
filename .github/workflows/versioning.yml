@@ -1,43 +1,94 @@
-name: Semantic Versioning
+name: Courier
 
 on:
   push:
-    branches: [ "main" ]
-  #pull_request:
-  #  branches: [ "main" ]
+    branches:
+      - main
+
+env:
+  DESTINATION_REPO: 'i506dk/SSAD'
+  DESTINATION_BRANCH: 'main'
+
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest    
 
-    steps:    
-    - name: Git Semantic Version
-      uses: paulhatch/semantic-version@v5.0.2
-      with:
-        # The prefix to use to identify tags
-        tag_prefix: "v"
-        # A string which, if present in a git commit, indicates that a change represents a
-        # major (breaking) change, supports regular expressions wrapped with '/'
-        major_pattern: "(MAJOR)"
-        # A string which indicates the flags used by the `major_pattern` regular expression. Supported flags: idgs
-        major_regexp_flags: ""
-        # Same as above except indicating a minor change, supports regular expressions wrapped with '/'
-        minor_pattern: "(MINOR)"
-        # A string which indicates the flags used by the `minor_pattern` regular expression. Supported flags: idgs
-        minor_regexp_flags: ""
-        # A string to determine the format of the version output
-        version_format: "${major}.${minor}.${patch}-prerelease${increment}"
-        # Optional path to check for changes. If any changes are detected in the path the
-        # 'changed' output will true. Enter multiple paths separated by spaces.
-        #change_path: "src/my-service"
-        # Named version, will be used as suffix for name version tag
-        #namespace: my-service
-        # If this is set to true, *every* commit will be treated as a new version.
-        bump_each_commit: false
-        # If true, the body of commits will also be searched for major/minor patterns to determine the version type.
-        search_commit_body: false
-        # The output method used to generate list of users, 'csv' or 'json'.
-        user_format_type: "csv"
-        # Prevents pre-v1.0.0 version from automatically incrementing the major version.
-        # If enabled, when the major version is 0, major releases will be treated as minor and minor as patch. Note that the version_type output is unchanged.
-        #enable_prerelease_mode: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+         
+      - name: Version Codebase
+        id: version
+        uses: paulhatch/semantic-version@v5.0.2
+        with:
+          tag_prefix: 'v'
+
+      - name: Version Name
+        id: semver
+        run: |
+          major="${{steps.version.outputs.major}}"
+          minor="${{steps.version.outputs.minor}}"
+          patch="${{steps.version.outputs.patch}}"
+          echo "VERSION=$major.$minor.$patch" >> $GITHUB_ENV
+
+
+      - name: Create Local Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ env.VERSION }}
+          release_name: Release v${{ env.VERSION }}
+          body: |
+            Changes in this Release:
+              - First Change
+              - Second Change
+
+          draft: true
+          prerelease: false
+
+
+      - name: Push to Remote
+        uses: ad-m/github-push-action@master
+        with: 
+          force: true
+          branch: Release-${{ env.VERSION }}
+          github_token: ${{ secrets.ACCESS_TOKEN }}
+          repository: ${{ env.DESTINATION_REPO }} 
+
+      #- name: Open PR 
+      #  uses: repo-sync/pull-request@v2 
+      #  with:
+      #    github_token: ${{ secrets.ACCESS_TOKEN }}
+      #    source_branch: Release-${{ env.VERSION }}
+      #    destination_branch: ${{ env. DESTINATION_BRANCH }} 
+      #    destination_repository: ${{ env.DESTINATION_REPO }} 
+      #    pr_title: "Release-${{ env.VERSION }}"
+      #    pr_body: |
+      #      :crown: *An automated PR*
+            
+            # Things Accomplished:
+      #      Automated PR Creation in Public Remote Repository
+           
+      #      v${{ env.VERSION }}
+            
+            # Next Things to Test
+      #      - must publish a new tag with the semver so the following
+      #        publish with do it correctly!
+
+      #    pr_label: 'release'
+          
+     
+      - name: output-url
+        run: echo ${{steps.open-pr.outputs.pr_url}}
+      - name: output-number
+        run: echo ${{steps.open-pr.outputs.pr_number}}
+      - name: output-created
+        run: echo ${{steps.open-pr.outputs.pr_created}}
+      #- name: output-has-changed-files 
+      #  run: echo ${{steps.open-pr.outputs.has_changed_files}}
