@@ -29,19 +29,17 @@ jobs:
           minor_pattern: "feat:"
           format: "v${major}.${minor}.${patch}"
       
-      - name: Check output
-        #env:
-        #  RELEASE_VERSION: ${{ steps.tag_out.outputs.tag }}
-        run: echo ${{ steps.versioning.outputs.version_tag }}
+      #- name: Check output
+      #  run: echo ${{ steps.versioning.outputs.version_tag }}
           
       # Create new release  
-      #- name: Create Release
-      #  id: create_release
-      #  uses: actions/create-release@latest
-      #  env:
-      #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-      #  with:
-      #    tag_name: ${{ github.ref }}
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: ${{ steps.versioning.outputs.version_tag }}
       #    release_name: Release ${{ github.ref }}
           #body: |
           #  Changes in this Release
