@@ -74,7 +74,7 @@ New-IISSiteBinding -Name "Default Web Site" -BindingInformation "*:443:" -Protoc
     
 def install_iis():
     iis_script = """[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;
-Install-WindowsFeature -Name Web-Server -IncludeManagementTools -Verbose;
+Install-WindowsFeature -Name Web-Server -IncludeManagementTools;
 Install-Module -Name IISAdministration -MinimumVersion 1.1.0.0 -Force;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServerRole;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServer;
