@@ -78,7 +78,9 @@ Import-Module ServerManager;
 Install-WindowsFeature -Name Web-Server -IncludeManagementTools;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-ManagementConsole -All;
 Install-Module -Name IISAdministration -Scope AllUsers -AllowClobber -Force;"""
-    parse_command(iis_script)
+    #parse_command(iis_script)
+    iis_process = subprocess.Popen(["powershell.exe", iis_process])
+    iis_process.wait()
      
     return
 
@@ -238,7 +240,7 @@ def restart_windows(arg_list):
         run_script_at_startup_set(script_name, arg_list, user=True)
     
     # Restart system
-    #os.system("shutdown /r /t 10")
+    os.system("shutdown /r /t 10")
     print("Awaiting restart.")
     exit()
     
@@ -821,6 +823,7 @@ def main_function(admin_password, username, password, hostname, database="Secret
         # Validate permissions and connectivity for the sql server
         validate_sql(username, password, hostname, database)
         
+        # Install Secret Server
         install_secret_server(admin_password, username, password, hostname, database)
     
     # Don't know what this would be. Assume normal windows variant.
