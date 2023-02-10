@@ -124,7 +124,7 @@ def download_file(url, save_path):
 
 # Define a function to write status to progress file
 def write_status(status):
-    path = os.getcwd() + "\\progress.txt"
+    path = os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt"
     
     if os.path.exists(path) is True:
         with open(path, "a+") as file:
@@ -209,7 +209,7 @@ def restart_windows(arg_list):
     # Print warning message
     print("Restarting in 10 seconds...")
     # For any items that say "awaiting restart" change those to "passed"
-    progress_file = os.getcwd() + "\\progress.txt"
+    progress_file = os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt"
     if os.path.exists(progress_file) is True:
         with open(progress_file, "r+") as file:
             content = file.readlines()
@@ -228,17 +228,17 @@ def restart_windows(arg_list):
     script_name = os.path.basename(__file__)
     # Remove script name/path from arguments
     if arg_list is None:
-        arguments = list(sys.argv)
-        for arg in arguments:
+        arg_list = list(sys.argv)
+        for arg in arg_list:
             if script_name in arg:
-                arguments.remove(arg)
+                arg_list.remove(arg)
                 
-        run_script_at_startup_set(script_name, arguments, user=True)
+        run_script_at_startup_set(script_name, arg_list, user=True)
     else:
         run_script_at_startup_set(script_name, arg_list, user=True)
     
     # Restart system
-    os.system("shutdown /r /t 10")
+    #os.system("shutdown /r /t 10")
     print("Awaiting restart.")
     exit()
     
@@ -257,9 +257,9 @@ def cleanup():
             run_at_startup_remove(os.path.basename(__file__), user=True)
 
     # Remove progress file if it exists
-    os.getcwd() + "\\progress.txt"
-    if os.path.exists(os.getcwd() + "\\progress.txt") is True:
-        os.remove(os.getcwd() + "\\progress.txt")
+    os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt"
+    if os.path.exists(os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt") is True:
+        os.remove(os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt")
 
     return
     
@@ -334,9 +334,9 @@ def validate_sql(service_account, service_account_password, hostname, database, 
     create_socket.close()
     
     # Define paths to script, output, and error files
-    script_path = os.getcwd() + "\\script.ps1"
-    output_path = os.getcwd() + "\\output.txt"
-    error_path = os.getcwd() + "\\error.txt"
+    script_path = os.path.dirname(os.path.realpath(__file__)) + "\\script.ps1"
+    output_path = os.path.dirname(os.path.realpath(__file__)) + "\\output.txt"
+    error_path = os.path.dirname(os.path.realpath(__file__)) + "\\error.txt"
     
     # Initialize powershell script contents to check sql permissions
     script_content = """$sql_command = "SELECT * FROM fn_my_permissions(NULL, 'DATABASE');"
@@ -387,7 +387,6 @@ $dataSet.Tables | Format-Table -HideTableHeaders""".format(hostname, database)
             
         print("Getting SQL permissions failed with error: ")
         print(content)
-        # Errors here
         
     else:
         # Clean up permissions
@@ -444,13 +443,13 @@ def install_secret_server(administrator_password, service_account, service_accou
     # Url to setup.exe
     installer_url = "https://updates.thycotic.net/SecretServer/setup.exe"
     # Set download path
-    installer = os.getcwd() + "\\setup.exe"
+    installer = os.path.dirname(os.path.realpath(__file__)) + "\\setup.exe"
     # Download Secret Server
     print("\nDownloading Secret Server installer...")
     download_file(installer_url, installer)
     
     # Create log folder
-    log_directory = os.getcwd() + "\\Logs"
+    log_directory = os.path.dirname(os.path.realpath(__file__)) + "\\Logs"
     if os.path.exists(log_directory) is True:
         # os.walk returns path, directories, and files.
         # Just delete the files
@@ -500,23 +499,25 @@ def main_function(admin_password, username, password, hostname, database="Secret
         print("\nDetected Windows Server version. Continuing...")
 
         # Create a text file to check progress
-        progress_file = os.getcwd() + "\\progress.txt"
+        progress_file = os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt"
         
         # Initialize a dictionary to hold statuses of each item to be installed
         statuses = {}
 
         # Check if progress file exists, if not create it
         if os.path.exists(progress_file) is True:
+            print("Found progress file...")
             with open(progress_file, "r+") as file:
                 content = file.readlines()
                 # Break items apart and add to dictionary
                 for line in content:
                     line = line.strip('\n')
                     item, status = line.split(" = ")
+                    print(item, status)
                     statuses[item] = status    
         else:
             with open(progress_file, "w+") as file:
-                pass
+                print("Progress file not found. Creating...")
 
         # Check for iis
         if statuses.__contains__("iis"):
