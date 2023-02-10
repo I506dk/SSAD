@@ -60,9 +60,7 @@ Remove-Item $save_path"""
 
 # Define a function to create https binding using a powershell script
 def create_binding():
-    binding_script = """Import-Module WebAdministration;
-Import-Module IISAdministration;
-$fqdn = [System.Net.Dns]::GetHostByName($env:computerName).hostname;
+    binding_script = """$fqdn = [System.Net.Dns]::GetHostByName($env:computerName).hostname;
 $cert_path = "cert:\LocalMachine\My";
 $certificate = New-SelfSignedCertificate -DnsName $fqdn -CertStoreLocation $cert_path;
 $certificate_thumbprint = $certificate.Thumbprint;
@@ -74,19 +72,12 @@ New-IISSiteBinding -Name "Default Web Site" -BindingInformation "*:443:" -Protoc
 
 # Define a function to install necessary components of iis
 def install_iis():
-    iis_script = """[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;
+    iis_script = """Set-ExecutionPolicy Bypass -Scope Process -Force;
+Import-Module ServerManager;
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;
 Install-WindowsFeature -Name Web-Server -IncludeManagementTools;
-Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServerRole;
-Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServer;
-Enable-WindowsOptionalFeature -Online -FeatureName IIS-CommonHttpFeatures;
-Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpErrors;
-Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpRedirect;
-Enable-WindowsOptionalFeature -Online -FeatureName IIS-ApplicationDevelopment;
-Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServerManagementTools;
-Enable-WindowsOptionalFeature -Online -FeatureName IIS-ManagementConsole;
-Enable-WindowsOptionalFeature -Online -FeatureName IIS-BasicAuthentication;
-Enable-WindowsOptionalFeature -Online -FeatureName IIS-WindowsAuthentication;
-Install-Module -Name IISAdministration -MinimumVersion 1.1.0.0 -Force;"""
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-ManagementConsole -All;
+Install-Module -Name IISAdministration -Scope AllUsers -AllowClobber -Force;"""
     parse_command(iis_script)
      
     return
