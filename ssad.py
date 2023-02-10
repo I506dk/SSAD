@@ -79,7 +79,7 @@ Install-WindowsFeature -Name Web-Server -IncludeManagementTools;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-ManagementConsole -All;
 Install-Module -Name IISAdministration -Scope AllUsers -AllowClobber -Force;"""
     #parse_command(iis_script)
-    iis_process = subprocess.Popen(["powershell.exe", iis_process])
+    iis_process = subprocess.Popen(["powershell.exe", iis_script])
     iis_process.wait()
      
     return
@@ -480,6 +480,10 @@ def install_secret_server(administrator_password, service_account, service_accou
     print("\nSecret Server can be accessed at 'https://{}/SecretServer'".format(socket.getfqdn()))
     print("\nAdministrator credentials for Secret Server are 'administrator' with password '{}'".format(administrator_password))
     print("Secret Server installation log file located at '{}'".format(log_file))
+    
+    # Wait for user before exiting
+    input("Press any key to continue...")
+    
     if os.path.exists(installer) is True:
         os.chmod(installer, 0o777)
         os.remove(installer)
