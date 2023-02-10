@@ -76,7 +76,6 @@ New-IISSiteBinding -Name "Default Web Site" -BindingInformation "*:443:" -Protoc
 def install_iis():
     iis_script = """[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;
 Install-WindowsFeature -Name Web-Server -IncludeManagementTools;
-Install-Module -Name IISAdministration -MinimumVersion 1.1.0.0 -Force;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServerRole;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServer;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-CommonHttpFeatures;
@@ -86,7 +85,8 @@ Enable-WindowsOptionalFeature -Online -FeatureName IIS-ApplicationDevelopment;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServerManagementTools;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-ManagementConsole;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-BasicAuthentication;
-Enable-WindowsOptionalFeature -Online -FeatureName IIS-WindowsAuthentication;"""
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-WindowsAuthentication;
+Install-Module -Name IISAdministration -MinimumVersion 1.1.0.0 -Force;"""
     parse_command(iis_script)
      
     return
@@ -373,7 +373,10 @@ $dataSet.Tables | Format-Table -HideTableHeaders""".format(hostname, database)
         error_path
     )
 
-    subprocess.check_output(["powershell.exe", sql_command])
+    # wait for process to complete
+    sql_process = subprocess.Popen(["powershell.exe", sql_command])
+    sql_process.wait()
+    print(sql_process)
     
     # Output gets written to text file. Read it back in
     if os.path.exists(output_path) is True:
@@ -393,6 +396,8 @@ $dataSet.Tables | Format-Table -HideTableHeaders""".format(hostname, database)
             
         print("Getting SQL permissions failed with error: ")
         print(content)
+        # Errors here
+        
     else:
         # Clean up permissions
         i = 0
@@ -414,24 +419,27 @@ $dataSet.Tables | Format-Table -HideTableHeaders""".format(hostname, database)
         for item in content:
             print("  - " + str(item))
         
-        # Accounts needs create and view permissions on the database
-        if ("CREATE DATABASE" in content) and ("VIEW ANY COLUMN ENCRYPTION KEY DEFINITION" in content) and ("VIEW ANY COLUMN MASTER KEY DEFINITION" in content):
-            print("\nService account '{}' has the correct permissions on the database '{}'".format(service_account, database))
-            sql_permission_pass = True
-        else:
-            print("\nService account '{}' does not have the correct permissions on the database '{}'".format(service_account, database))
-            sql_permission_pass = False
-            
-    # Cleanup
-    if os.path.exists(output_path) is True:
-        os.remove(output_path)
-    if os.path.exists(error_path) is True:
-        os.remove(error_path)
-    if os.path.exists(script_path) is True:
-        os.remove(script_path)
+    # Accounts needs create and view permissions on the database
+    if ("CREATE DATABASE" in content) and ("VIEW ANY COLUMN ENCRYPTION KEY DEFINITION" in content) and ("VIEW ANY COLUMN MASTER KEY DEFINITION" in content):
+        print("\nService account '{}' has the correct permissions on the database '{}'".format(service_account, database))
+        sql_permission_pass = True
+    else:
+        print("\nService account '{}' does not have the correct permissions on the database '{}'".format(service_account, database))
+        sql_permission_pass = False
+
     
+    # Check for errors that show up here
     if (sql_connection_pass is True) and (sql_permission_pass is True):
         print("SQL validation passed. Continuing...")
+        
+        # Cleanup
+        if os.path.exists(output_path) is True:
+            os.remove(output_path)
+        if os.path.exists(error_path) is True:
+            os.remove(error_path)
+        if os.path.exists(script_path) is True:
+            os.remove(script_path)
+            
     else:
         input("SQL validation failed. Exiting...")
         cleanup()
@@ -895,4 +903,3 @@ if __name__ == '__main__':
 
     # Call main function
     main_function(admin_password, username, password, server, database)
-
