@@ -12,6 +12,7 @@
 
 ## Dependencies
 - [Pywin32](https://pypi.org/project/pywin32/) - Python for Window Extensions
+- [Psutil](https://pypi.org/project/psutil/) - Cross-platform lib for process and system monitoring in Python
 - [Requests](https://pypi.org/project/requests/) - Python HTTP for Humans
 
 ## Installation
@@ -31,6 +32,7 @@ pip install -r requirements.txt
 **Or individually installed via Pip:**
 ```
 pip install pywin32
+pip install psutil
 pip install requests
 ```
 
