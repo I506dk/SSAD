@@ -2,13 +2,15 @@
 import re
 import os
 import sys
+import time
 import socket
 import argparse
 import subprocess
 
 # Not part of the python standard library
 import requests
-# 'pip  install pywin32' needed for the below libraries
+import psutil
+# 'pip install pywin32' needed for the below libraries
 import winerror
 import win32con
 import win32api
@@ -36,14 +38,25 @@ import pywintypes
 Startup_Key_Path = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce"
 
 
-# Define a function to run a powershell command via subprocess and return the string output
+# Define a function to run a powershell or commandline command via subprocess and return the string output
 def parse_command(command):
-    command_output = subprocess.check_output(["powershell.exe", command]).decode("utf-8")
-    command_output = command_output.replace('\n', '')
-    command_output = command_output.replace('\r', '')
+    try:    
+        command = subprocess.run(["powershell.exe", "-Command", command], capture_output=True)
+        command_output = command.stdout.decode("utf-8")
+        command_output = command_output.replace('\n', '')
+        command_output = command_output.replace('\r', '')
+        
+        if command.returncode != 0:
+            print(command.stderr)
+            return (command.stderr.decode("utf-8"))
+        else:
+            return command_output
+        
+    except subprocess.CalledProcessError as e:
+        print(e)
 
-    return command_output
-    
+        return None
+
     
 # Define a function to install dotnet 4.8 using a powershell script
 # Requires a restart
@@ -60,7 +73,9 @@ Remove-Item $save_path"""
 
 # Define a function to create https binding using a powershell script
 def create_binding():
-    binding_script = """$fqdn = [System.Net.Dns]::GetHostByName($env:computerName).hostname;
+    binding_script = """[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;
+Import-Module WebAdministration;
+$fqdn = [System.Net.Dns]::GetHostByName($env:computerName).hostname;
 $cert_path = "cert:\LocalMachine\My";
 $certificate = New-SelfSignedCertificate -DnsName $fqdn -CertStoreLocation $cert_path;
 $certificate_thumbprint = $certificate.Thumbprint;
@@ -72,16 +87,34 @@ New-IISSiteBinding -Name "Default Web Site" -BindingInformation "*:443:" -Protoc
 
 # Define a function to install necessary components of iis
 def install_iis():
-    iis_script = """Set-ExecutionPolicy Bypass -Scope Process -Force;
-Import-Module ServerManager;
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;
-Install-WindowsFeature -Name Web-Server -IncludeManagementTools;
-Enable-WindowsOptionalFeature -Online -FeatureName IIS-ManagementConsole -All;
+    iis_script = """[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServerRole;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServer;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-ManagementConsole;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-ManagementScriptingTools;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-DefaultDocument;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpErrors;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-StaticContent;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpRedirect;
+Disable-WindowsOptionalFeature -Online -FeatureName IIS-DirectoryBrowsing;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpLogging;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-CustomLogging;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-LoggingLibraries;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-RequestMonitor;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpTracing;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpCompressionStatic;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpCompressionDynamic;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-RequestFiltering;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-WindowsAuthentication;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-ApplicationInit;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-ISAPIExtensions;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-ISAPIFilter;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-ASPNET45;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-NetFxExtensibility45;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebSockets;
 Install-Module -Name IISAdministration -Scope AllUsers -AllowClobber -Force;"""
-    #parse_command(iis_script)
-    iis_process = subprocess.Popen(["powershell.exe", iis_script])
-    iis_process.wait()
-     
+    parse_command(iis_script)
+    
     return
 
     
@@ -91,6 +124,28 @@ def install_sql_dev():
     parse_command(sql_script)
     
     return
+    
+
+# Define a function to get process information for the file path specified
+def process_exists(file_path):
+    # Get the current username
+    current_user = os.getlogin()
+    # Get all current running processes
+    for proc in psutil.process_iter(["pid", "name", "username"]):
+        # Get only the processes started by the current user
+        process_info = proc.info
+        if current_user in str(process_info["username"]):
+            # Check to see if the filepath plus name is a legitimate path
+            # If so, return path and process name
+            if os.path.exists(os.path.abspath(process_info["name"])) is True:
+                print("Process exists for: {} with PID: {}".format(process_info["name"], process_info["pid"]))
+                process_path = os.path.abspath(process_info["name"])
+                current_process = process_info["name"]
+                process_pid = process_info["pid"]
+                
+                return current_process, process_path, process_pid
+            else:
+                return None, None, None
 
 
 # Define function to print out progress
@@ -167,14 +222,14 @@ def run_at_startup_set(appname, arguments, path=None, user=False):
     run_parameters = path or win32api.GetModuleFileName(0)
     for arg in arguments:
         run_parameters += ' "' + str(arg) + '"'
-    
+
     # Create a new key
     win32api.RegSetValueEx(key, appname, 0, win32con.REG_SZ, run_parameters)
     # Close the key
     win32api.RegCloseKey(key)
     
     return
-
+    
 
 # Define a function to run a script at boot
 def run_script_at_startup_set(appname, arguments, user=False):
@@ -366,10 +421,8 @@ $dataSet.Tables | Format-Table -HideTableHeaders""".format(hostname, database)
         error_path
     )
 
-    # wait for process to complete
-    sql_process = subprocess.Popen(["powershell.exe", sql_command])
-    sql_process.wait()
-    print(sql_process)
+    # Wait for process to complete
+    parse_command(sql_command)
     
     # Output gets written to text file. Read it back in
     if os.path.exists(output_path) is True:
@@ -388,7 +441,6 @@ $dataSet.Tables | Format-Table -HideTableHeaders""".format(hostname, database)
             print("Error file not found.")
             
         print("Getting SQL permissions failed with error: ")
-        print(content)
         
     else:
         # Clean up permissions
@@ -461,36 +513,64 @@ def install_secret_server(administrator_password, service_account, service_accou
                 os.chmod(current_file, 0o777)
                 os.remove(current_file)
     else:
-            os.mkdir(log_directory)
+        os.mkdir(log_directory)
     
     # Output log file to current working directory
     log_file = log_directory + "\\ss-install.log"
 
     # Command for installing secret server silently
-    ss_command = '{} -q -s InstallSecretServer=1 InstallPrivilegeManager=1 ' \
-'SecretServerUserDisplayName="Administrator" SecretServerUserName="Administrator" SecretServerUserPassword="{}" ' \
-'SecretServerAppUserName="{}" SecretServerAppPassword="{}" ' \
-'DatabaseIsUsingWindowsAuthentication=True DatabaseServer="{}" DatabaseName="{}" /l  "{}"'.format(installer, administrator_password, service_account, service_account_password, sql_hostname, database_name, log_file)
-    
-    # Run installer
+    ss_command = [
+        installer,
+        "-q",
+        "-s",
+        "InstallSecretServer=1",
+        "InstallPrivilegeManager=1",
+        'SecretServerUserDisplayName="Administrator"',
+        'SecretServerUserName="Administrator"',
+        "SecretServerUserPassword=" + '"' + administrator_password + '"',
+        "SecretServerAppUserName=" + '"' + service_account + '"',
+        "SecretServerAppPassword=" + '"' + service_account_password + '"',
+        "DatabaseIsUsingWindowsAuthentication=True",
+        "DatabaseServer=" + '"' + sql_hostname + '"',
+        "DatabaseName=" + '"' + database_name + '"',
+        "/l",
+        log_file
+    ]
+
     print("\nInstalling Secret Server...")
-    subprocess.check_output(ss_command)
+    # Install Secret Server
+    #installer_process = subprocess.run(ss_command, capture_output=True, shell=False)
+    installer_process = subprocess.Popen(ss_command)# , stdout=subprocess.PIPE)#, user=current_user)
+
+    # Sleep for 5 seconds
+    time.sleep(5)
+    
+    # Check the PID of the Secret Server installer
+    # If it is still running, let it do its thing, otherwise continue
+    print("Checking for installer process...")
+    if installer_process.pid is not None:
+        print("Installer found running with PID: {}".format(installer_process.pid))
+        while psutil.pid_exists(int(installer_process.pid)) is True:
+            print("Installer still running...")
+            time.sleep(10)
+    else:
+        print("No installer found running. Continuing...")
 
     # Print finish message along with url and credentials
     print("\nSecret Server can be accessed at 'https://{}/SecretServer'".format(socket.getfqdn()))
     print("\nAdministrator credentials for Secret Server are 'administrator' with password '{}'".format(administrator_password))
-    print("Secret Server installation log file located at '{}'".format(log_file))
+    print("Secret Server installation log files are located at '{}'".format(log_file))
+    input("Press any key to exit...")
     
-    # Wait for user before exiting
-    input("Press any key to continue...")
-    
+    # Once Secret Server is installed and configured, delete the setup.exe file
     if os.path.exists(installer) is True:
-        os.chmod(installer, 0o777)
         os.remove(installer)
-
+    
     return
 
 
+# Catch first install that may already have site binding
+# Define a main function to install all the pieces needed for Secret Server
 def main_function(admin_password, username, password, hostname, database="SecretServer"):
     # Get the curent os type
     os_check = parse_command("$osInfo = Get-CimInstance -ClassName Win32_OperatingSystem; $osInfo.ProductType")
@@ -586,7 +666,7 @@ def main_function(admin_password, username, password, hostname, database="Secret
                 else:
                     # Install IIS
                     print("Installing Internet Information Services (IIS) on this server...")
-                    parse_command("Install-WindowsFeature -name Web-Server -IncludeManagementTools -IncludeAllSubFeature")
+                    install_iis()
                     # Write iis status to file
                     write_status("iis = passed")
                     statuses["iis"] = "passed"
@@ -725,7 +805,7 @@ def main_function(admin_password, username, password, hostname, database="Secret
             else:
                 # Install IIS
                 print("Installing Internet Information Services (IIS) on this server...")
-                parse_command("Install-WindowsFeature -name Web-Server -IncludeManagementTools -IncludeAllSubFeature")
+                install_iis()
                 # Write iis status to file
                 write_status("iis = passed")
                 statuses["iis"] = "passed"
