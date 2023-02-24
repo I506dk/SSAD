@@ -25,8 +25,17 @@ jobs:
         uses: PaulHatch/semantic-version@v4.0.2
         with:
           branch: main
-          major_pattern: "BREAKING CHANGE:"
-          minor_pattern: "feat:"
+          tag_prefix: "v"
+          # A string which, if present in a git commit, indicates that a change represents a
+          # major (breaking) change, supports regular expressions wrapped with '/'
+          major_pattern: "Major"
+          # A string which indicates the flags used by the `major_pattern` regular expression. Supported flags: idgs
+          major_regexp_flags: ""
+          # Same as above except indicating a minor change, supports regular expressions wrapped with '/'
+          minor_pattern: "Minor"
+          # A string which indicates the flags used by the `minor_pattern` regular expression. Supported flags: idgs
+          minor_regexp_flags: ""
+          # Format for the version
           format: "v${major}.${minor}.${patch}"
       
       #- name: Check output
