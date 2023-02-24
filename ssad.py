@@ -14,6 +14,7 @@ import psutil
 import winerror
 import win32con
 import win32api
+import win32net
 import pywintypes
 
 # Secret Server executable
@@ -498,80 +499,98 @@ def install_secret_server(administrator_password, service_account, service_accou
     installer_url = "https://updates.thycotic.net/SecretServer/setup.exe"
     # Set download path
     installer = os.path.dirname(os.path.realpath(__file__)) + "\\setup.exe"
-    # Download Secret Server
-    print("\nDownloading Secret Server installer...")
-    download_file(installer_url, installer)
     
-    # Create log folder
-    log_directory = os.path.dirname(os.path.realpath(__file__)) + "\\Logs"
-    if os.path.exists(log_directory) is True:
-        # os.walk returns path, directories, and files.
-        # Just delete the files
-        for contents in os.walk(log_directory):
-            for file in contents[2]:
-                current_file = log_directory + "\\" + file
-                os.chmod(current_file, 0o777)
-                os.remove(current_file)
-    else:
-        os.mkdir(log_directory)
+    try:
     
-    # Output log file to current working directory
-    log_file = log_directory + "\\ss-install.log"
+        # Download Secret Server
+        print("\nDownloading Secret Server installer...")
+        download_file(installer_url, installer)
+        
+        # Create log folder
+        log_directory = os.path.dirname(os.path.realpath(__file__)) + "\\Logs"
+        if os.path.exists(log_directory) is True:
+            # os.walk returns path, directories, and files.
+            # Just delete the files
+            for contents in os.walk(log_directory):
+                for file in contents[2]:
+                    current_file = log_directory + "\\" + file
+                    os.chmod(current_file, 0o777)
+                    os.remove(current_file)
+        else:
+            os.mkdir(log_directory)
+        
+        # Output log file to current working directory
+        log_file = log_directory + "\\ss-install.log"
+        
+        # Command for installing secret server silently
+        ss_command = [
+            installer,
+            "-q",
+            "-s",
+            "InstallSecretServer=1",
+            "InstallPrivilegeManager=1",
+            'SecretServerUserDisplayName="Administrator"',
+            'SecretServerUserName="Administrator"',
+            "SecretServerUserPassword=" + '"' + administrator_password + '"',
+            "SecretServerAppUserName=" + '"' + service_account + '"',
+            "SecretServerAppPassword=" + '"' + service_account_password + '"',
+            "DatabaseIsUsingWindowsAuthentication=True",
+            "DatabaseServer=" + '"' + sql_hostname + '"',
+            "DatabaseName=" + '"' + database_name + '"',
+            "/l",
+            log_file
+        ]
 
-    # Command for installing secret server silently
-    ss_command = [
-        installer,
-        "-q",
-        "-s",
-        "InstallSecretServer=1",
-        "InstallPrivilegeManager=1",
-        'SecretServerUserDisplayName="Administrator"',
-        'SecretServerUserName="Administrator"',
-        "SecretServerUserPassword=" + '"' + administrator_password + '"',
-        "SecretServerAppUserName=" + '"' + service_account + '"',
-        "SecretServerAppPassword=" + '"' + service_account_password + '"',
-        "DatabaseIsUsingWindowsAuthentication=True",
-        "DatabaseServer=" + '"' + sql_hostname + '"',
-        "DatabaseName=" + '"' + database_name + '"',
-        "/l",
-        log_file
-    ]
+        # Install Secret Server
+        print("\nInstalling Secret Server...")
+        #os.chmod(installer, 0o777)
+        # Give the local system access to the installer
+        #subprocess.Popen('CACLS "{}" /e /p system:f'.format(installer))
+        installer_process = subprocess.Popen(ss_command)
 
-    print("\nInstalling Secret Server...")
-    # Install Secret Server
-    #installer_process = subprocess.run(ss_command, capture_output=True, shell=False)
-    installer_process = subprocess.Popen(ss_command)# , stdout=subprocess.PIPE)#, user=current_user)
+        # Sleep for 10 seconds
+        time.sleep(10)
+        
+        # Check the PID of the Secret Server installer
+        # If it is still running, let it do its thing, otherwise continue
+        print("Checking for installer process...")
+        if installer_process.pid is not None:
+            print("Installer found running with PID: {}".format(installer_process.pid))
+            while psutil.pid_exists(int(installer_process.pid)) is True:
+                j = 1
+                while True:
+                    if j < 5:
+                        print("\rInstaller still running" + "."*j, end="")
+                        time.sleep(1)
+                        j += 1
+                    else:
+                        print("\rInstaller still running" + "."*j, end="")
+                        time.sleep(1)
+                        while j > 0:
+                            sys.stdout.write('\b \b')
+                            j -= 1
+        else:
+            print("No installer found running. Continuing...")
 
-    # Sleep for 5 seconds
-    time.sleep(5)
-    
-    # Check the PID of the Secret Server installer
-    # If it is still running, let it do its thing, otherwise continue
-    print("Checking for installer process...")
-    if installer_process.pid is not None:
-        print("Installer found running with PID: {}".format(installer_process.pid))
-        while psutil.pid_exists(int(installer_process.pid)) is True:
-            print("Installer still running...")
-            time.sleep(10)
-    else:
-        print("No installer found running. Continuing...")
+        # Print finish message along with url and credentials
+        print("\nSecret Server can be accessed at 'https://{}/SecretServer'".format(socket.getfqdn()))
+        print("\nAdministrator credentials for Secret Server are 'administrator' with password '{}'".format(administrator_password))
+        print("Secret Server installation log files are located at '{}'".format(log_file))
+        input("Press any key to exit...")
+        
+        # Once Secret Server is installed and configured, delete the setup.exe file
+        if os.path.exists(installer) is True:
+            os.remove(installer)
 
-    # Print finish message along with url and credentials
-    print("\nSecret Server can be accessed at 'https://{}/SecretServer'".format(socket.getfqdn()))
-    print("\nAdministrator credentials for Secret Server are 'administrator' with password '{}'".format(administrator_password))
-    print("Secret Server installation log files are located at '{}'".format(log_file))
-    input("Press any key to exit...")
-    
-    # Once Secret Server is installed and configured, delete the setup.exe file
-    if os.path.exists(installer) is True:
-        os.remove(installer)
-    
+    except Exception as error:
+        print("Failed with error: {}".format(error))
+
     return
 
 
 # Catch first install that may already have site binding
 # Define a main function to install all the pieces needed for Secret Server
-def main_function(admin_password, username, password, hostname, database="SecretServer"):
+def main_function(admin_password, service_account, service_account_password, hostname, database="SecretServer"):
     # Get the curent os type
     os_check = parse_command("$osInfo = Get-CimInstance -ClassName Win32_OperatingSystem; $osInfo.ProductType")
 
@@ -599,7 +618,6 @@ def main_function(admin_password, username, password, hostname, database="Secret
                 for line in content:
                     line = line.strip('\n')
                     item, status = line.split(" = ")
-                    print(item, status)
                     statuses[item] = status    
         else:
             with open(progress_file, "w+") as file:
@@ -810,12 +828,20 @@ def main_function(admin_password, username, password, hostname, database="Secret
                 write_status("iis = passed")
                 statuses["iis"] = "passed"
                 
-                # Create HTTPS binding using self signed certificate
-                print("Creating HTTPS binding on this server...")
-                create_binding()
-                # Write binding status to file
-                write_status("binding = passed")
-                statuses["binding"] = "passed"
+                # Check https site binding
+                https_binding = parse_command('(Get-IISSiteBinding -Name "Default Web Site" -Protocol https).bindingInformation')
+                # Create https binding if it doesn't already exist
+                if "Web site binding 'https' does not exist." in https_binding:
+                    print("HTTPS binding does not exist on this server. Creating binding...")
+                    create_binding()
+                    # Write binding status to file
+                    write_status("binding = passed")
+                    statuses["binding"] = "passed"
+                else:
+                    print("HTTPS binding set to {}. Continuing...".format(https_binding))
+                    # Write binding status to file
+                    write_status("binding = passed")
+                    statuses["binding"] = "passed"
                 
                 print("Installing HTTP activation on this server...")
                 parse_command("Install-WindowsFeature NET-WCF-HTTP-Activation45")
@@ -831,7 +857,7 @@ def main_function(admin_password, username, password, hostname, database="Secret
 
         # Check for dotnet
         if statuses.__contains__("dotnet_48"):
-            if statuses["dotnet_48"] != "passed":
+            if (statuses["dotnet_48"] != "passed") and (statuses["dotnet_48"] != "awaiting restart"):
                 # Install dotnet framework 4.8 if not already installed.
                 dotnet_check = subprocess.run('reg query "HKEY_LOCAL_MACHINE\\SOFTWARE\Microsoft\\NET Framework Setup\\NDP\\v4\\full" /v version', capture_output=True)
                 dotnet_check = dotnet_check.stdout.decode("utf-8")
@@ -852,7 +878,7 @@ def main_function(admin_password, username, password, hostname, database="Secret
                         # Write dotnet status to file
                         write_status("dotnet_48 = awaiting restart")
                         # Restart server
-                        restart_windows(["-s", hostname, "-d", database, "-u", username, "-p", password, "-a", admin_password])
+                        restart_windows(["-s", hostname, "-d", database, "-p", current_user_password, "-sa", service_account, "-sap", service_account_password, "-a", admin_password])
                         
                 else:
                     print("Installing Dotnet 4.8 on this server...")
@@ -860,7 +886,14 @@ def main_function(admin_password, username, password, hostname, database="Secret
                     # Write dotnet status to file
                     write_status("dotnet_48 = awaiting restart")
                     # Restart server
-                    restart_windows(["-s", hostname, "-d", database, "-u", username, "-p", password, "-a", admin_password])        
+                    restart_windows(["-s", hostname, "-d", database, "-p", current_user_password, "-sa", service_account, "-sap", service_account_password, "-a", admin_password])
+            elif statuses["dotnet_48"] == "awaiting restart":
+                # Restart server
+                restart_windows(["-s", hostname, "-d", database, "-p", current_user_password, "-sa", service_account, "-sap", service_account_password, "-a", admin_password])
+            else:
+                # Silently pass as dotnet is already installed
+                pass
+                
         else:
             # Install dotnet framework 4.8 if not already installed.
             dotnet_check = subprocess.run('reg query "HKEY_LOCAL_MACHINE\\SOFTWARE\Microsoft\\NET Framework Setup\\NDP\\v4\\full" /v version', capture_output=True)
@@ -882,14 +915,14 @@ def main_function(admin_password, username, password, hostname, database="Secret
                     # Write dotnet status to file
                     write_status("dotnet_48 = awaiting restart")
                     # Restart server
-                    restart_windows(["-s", hostname, "-d", database, "-u", username, "-p", password, "-a", admin_password])
+                    restart_windows(["-s", hostname, "-d", database, "-p", current_user_password, "-sa", service_account, "-sap", service_account_password, "-a", admin_password])
             else:
                 print("Installing Dotnet 4.8 on this server...")
                 install_dotnet()
                 # Write dotnet status to file
                 write_status("dotnet_48 = awaiting restart")
                 # Restart server
-                restart_windows(["-s", hostname, "-d", database, "-u", username, "-p", password, "-a", admin_password])
+                restart_windows(["-s", hostname, "-d", database, "-p", current_user_password, "-sa", service_account, "-sap", service_account_password, "-a", admin_password])
 
         # Check to make sure all prerequisites passed
         if all(statuses[item] == "passed" for item in statuses):
@@ -905,10 +938,10 @@ def main_function(admin_password, username, password, hostname, database="Secret
         ss_install = previous_install_check()
         
         # Validate permissions and connectivity for the sql server
-        validate_sql(username, password, hostname, database)
+        validate_sql(service_account, service_account_password, hostname, database)
         
         # Install Secret Server
-        install_secret_server(admin_password, username, password, hostname, database)
+        install_secret_server(admin_password, service_account, service_account_password, hostname, database)
     
     # Don't know what this would be. Assume normal windows variant.
     else:
@@ -921,7 +954,7 @@ def main_function(admin_password, username, password, hostname, database="Secret
 # Define function to parse argument passed via the command line
 def parse():
     parser = argparse.ArgumentParser(
-        usage="{} [-s 'SQL_server_hostname'] [-d 'SQL_database_name'] [-u 'domain\\service_account'] [-p 'service_account_password'] [-a 'local_admin_password']".format(os.path.basename(__file__)),
+        usage="{} [-s 'SQL_server_hostname'] [-d 'SQL_database_name'] [-sa 'domain\\service_account'] [-sap 'service_account_password'] [-p 'current_user_password'] [-a 'local_admin_password']".format(os.path.basename(__file__)),
         description="Automate the installation of Secret Server, along with necessary prerequisites."
     )
 
@@ -931,20 +964,20 @@ def parse():
         
     # Add argument that contains the database name for Secret Server to use
     parser.add_argument("-d", "--database", dest="database", action="store", type=str, required=False,
-        help="The name of the SQL database that Secret Server should use. Default is 'SecretServer'.")
+        help="The name of the SQL database that Secret Server should use. Default is generally 'SecretServer'.")
         
-    # Add argument that contains the username of the service account
-    parser.add_argument("-u", "--username", dest="username", action="store", type=str, required=False,
+    #    help="The service account username used to connect to the SQL database. Username should be in the format 'domain\\username'.")
+    parser.add_argument("-sa", "--service_account", dest="service_account", action="store", type=str, required=False,
         help="The service account username used to connect to the SQL database. Username should be in the format 'domain\\username'.")
         
     # Add argument that contains the password of the service account             
-    parser.add_argument("-p", "--password", dest="password", action="store", type=str, required=False,
-        help="The password for the service account used to connect to SQL.")
+    parser.add_argument("-sap", "--service_account_password", dest="service_account_password", action="store", type=str, required=False,
+        help="The password for the service account used to connect to SQL.")  
         
-    # Add argument that contains the password of the service account             
+    # Add argument that contains the password of the local administrator account in secret server            
     parser.add_argument("-a", "--administrator", dest="admin_password", action="store", type=str, required=False,
         help="The password for the local administrator account in Secret Server.")
-        
+    
     return parser.parse_args()
 
 
@@ -952,33 +985,25 @@ def parse():
 if __name__ == '__main__':
     # Get command line arguments
     args = parse()
-    
+
     # Check arguments, and if they aren't passed, ask user for them
-    # Create a dictionary of the arguments.
-    argument_dictionary = vars(args)
+    # Create a list of argument keys
+    argument_keys = vars(args).keys()
 
     # For each of the arguments, check to see if they are equal to None. 
     # If equal to none, prompt user to input a values
-    for key in argument_dictionary.keys():
-        if argument_dictionary[key] is None:
-            #print("{} is None.".format(key))
+    for key in argument_keys:
+        if getattr(args, key) is None:
             if key == "server":
-                argument_dictionary[key] = input("Please enter the hostname for the SQL server to connect to: ")
+                args.server = input("Please enter the hostname for the SQL server to connect to: ")
             if key == "database":
-                argument_dictionary[key] = input("Please enter the SQL database Secret Server should use (Default is 'SecretServer'): ")
-            if key == "username":
-                argument_dictionary[key] = input("Please enter the service account used to connect to SQL. Username should be in the format 'domain\\username': ")
-            if key == "password":
-                argument_dictionary[key] = input("Please enter the password for the service account used to connect to SQL: ")
+                args.database = input("Please enter the SQL database Secret Server should use (Default is 'SecretServer'): ")
+            if key == "service_account":
+                args.service_account = input("Please enter the service account used to connect to SQL. Username should be in the format 'domain\\username': ")
+            if key == "service_account_password":
+                args.service_account_password = input("Please enter the password for the service account used to connect to SQL: "))
             if key == "admin_password":
-                argument_dictionary[key] = input("Please enter the password for the local administrator account in Secret Server: ")
-                
-    # Initialize variables
-    server = argument_dictionary["server"]
-    database = argument_dictionary["database"]
-    username = argument_dictionary["username"]
-    password = argument_dictionary["password"]
-    admin_password = argument_dictionary["admin_password"]
+                args.admin_password = input("Please enter the password for the local administrator account in Secret Server: ")
 
     # Call main function
-    main_function(admin_password, username, password, server, database)
+    main_function(args.admin_password, args.service_account, args.service_account_password, args.server, args.database)
