@@ -57,13 +57,13 @@ Arguments can be specified to the script if an automated installation is wanted.
 
 - Examples: ```python ssad.py -d``` or ```python ssad.py --database```
 
-(***-u or --username***) - the username of the service account used to connect to the SQL database. Username should be in the format 'domain\username'.
+(***-sa or --service_account***) - the username of the service account used to connect to the SQL database. Username should be in the format 'domain\username'.
 
-- Examples: ```python ssad.py -u``` or ```python ssad.py --username```
+- Examples: ```python ssad.py -sa``` or ```python ssad.py --service_account```
 
-(***-p or --password***) - the password for the service account being used to connect to SQL.
+(***-sap or --service_account_password***) - the password for the service account being used to connect to SQL.
 
-- Examples: ```python ssad.py -p``` or ```python ssad.py --password```
+- Examples: ```python ssad.py -sap``` or ```python ssad.py --service_account_password```
 
 (***-a or --administrator***) - the password for the local administrator account created in Secret Server.
 
@@ -73,7 +73,7 @@ REMINDER - You can use multiple arguments as long as they aren't -h or --help (T
 
 Example run using arguments:
 ```
-python ssad.py -s my-sql-server -d SecretServer -u test.domain\service_account -p service_password -a admin_password
+python ssad.py -s my-sql-server -d SecretServer -sa test.domain\service_account -sap service_password -a admin_password
 ```
 
 ## To Do
