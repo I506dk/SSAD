@@ -501,7 +501,6 @@ def install_secret_server(administrator_password, service_account, service_accou
     installer = os.path.dirname(os.path.realpath(__file__)) + "\\setup.exe"
     
     try:
-    
         # Download Secret Server
         print("\nDownloading Secret Server installer...")
         download_file(installer_url, installer)
@@ -545,6 +544,7 @@ def install_secret_server(administrator_password, service_account, service_accou
         print("\nInstalling Secret Server...")
         #os.chmod(installer, 0o777)
         # Give the local system access to the installer
+        # Determine why ther installer doesn't work when run from the registry
         #subprocess.Popen('CACLS "{}" /e /p system:f'.format(installer))
         installer_process = subprocess.Popen(ss_command)
 
