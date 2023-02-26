@@ -95,7 +95,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: windows.exe
-          asset_name: ssad.exe
+          asset_path: ${{ env.SCRIPT }}.exe
+          asset_name: ${{ env.SCRIPT }}.exe
           asset_content_type: application/x-msdownload
           
