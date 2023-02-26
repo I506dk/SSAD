@@ -268,18 +268,21 @@ def restart_windows(arg_list):
     progress_file = os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt"
     if os.path.exists(progress_file) is True:
         with open(progress_file, "r+") as file:
-            nonlocal content = file.readlines()
+            content = file.readlines()
+    else:
+        content = None
 
     # Overwrite file
     with open(progress_file, "w") as file:
         # Break items apart and add to dictionary
-        for line in content:
-            if "awaiting restart" in line:
-                new_line = line.replace("awaiting restart", "passed")
-                file.write(new_line)
-            else:
-                file.write(line)
-    
+        if content is not None:
+            for line in content:
+                if "awaiting restart" in line:
+                    new_line = line.replace("awaiting restart", "passed")
+                    file.write(new_line)
+                else:
+                    file.write(line)
+        
     # Set script to re-run at boot with the arguments originally passed to it
     script_name = os.path.basename(__file__)
     # Remove script name/path from arguments
@@ -404,9 +407,10 @@ $dataSet.Tables | Format-Table -HideTableHeaders""".format(hostname, database)
     # Output gets written to text file. Read it back in
     if os.path.exists(output_path) is True:
         with open(output_path, "r+") as file:
-            nonlocal content = file.readlines()
+            content = file.readlines()
     else:
         print("Output file not found.")
+        content = None
             
     # If nothing is written to the content file, assume the command failed
     # And check the error file
@@ -420,30 +424,32 @@ $dataSet.Tables | Format-Table -HideTableHeaders""".format(hostname, database)
         print("Getting SQL permissions failed with error: ")
         
     else:
-        # Clean up permissions
-        i = 0
-        while i < len(content):
-            current_line = content[i]
-            current_line = current_line.strip()
-            if len(current_line) == 0:
-                content.pop(i)
-                i -= 1
-            else:
-                current_line = current_line.replace("database", '')
+        if content is not None:
+            # Clean up permissions
+            i = 0
+            while i < len(content):
+                current_line = content[i]
                 current_line = current_line.strip()
-                content[i] = current_line
-                
-            i += 1
-        
-        # Print out the permissions returned after parsing
-        print("\nSql Permissions for service account {}: ".format(service_account))
-        for item in content:
-            print("  - " + str(item))
+                if len(current_line) == 0:
+                    content.pop(i)
+                    i -= 1
+                else:
+                    current_line = current_line.replace("database", '')
+                    current_line = current_line.strip()
+                    content[i] = current_line
+                    
+                i += 1
+            
+            # Print out the permissions returned after parsing
+            print("\nSql Permissions for service account {}: ".format(service_account))
+            for item in content:
+                print("  - " + str(item))
         
     # Accounts needs create and view permissions on the database
-    if ("CREATE DATABASE" in content) and ("VIEW ANY COLUMN ENCRYPTION KEY DEFINITION" in content) and ("VIEW ANY COLUMN MASTER KEY DEFINITION" in content):
-        print("\nService account '{}' has the correct permissions on the database '{}'".format(service_account, database))
-        sql_permission_pass = True
+    if content is not None:
+        if ("CREATE DATABASE" in content) and ("VIEW ANY COLUMN ENCRYPTION KEY DEFINITION" in content) and ("VIEW ANY COLUMN MASTER KEY DEFINITION" in content):
+            print("\nService account '{}' has the correct permissions on the database '{}'".format(service_account, database))
+            sql_permission_pass = True
     else:
         print("\nService account '{}' does not have the correct permissions on the database '{}'".format(service_account, database))
         sql_permission_pass = False
