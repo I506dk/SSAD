@@ -38,10 +38,13 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
+          pip install imageio
+          pip install zstandard
+          pip install ordered-set
           pip install nuitka
       - name: Build
         run : |
-          python -m nuitka --standalone --enable-plugin=tk-inter --enable-plugin=numpy --assume-yes-for-downloads --output-dir=build --onefile --windows-disable-console ${{ env.SCRIPT }}.py
+          python -m nuitka --standalone --follow-imports --assume-yes-for-downloads --output-dir=build --onefile --windows-icon-from-ico=secret_server.png ${{ env.SCRIPT }}.py
       - name: Upload artifact
         uses: actions/upload-artifact@v3.1.0
         with:
