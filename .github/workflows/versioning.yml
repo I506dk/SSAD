@@ -7,6 +7,7 @@ on:
       - 'v*'
 env:
   REPO: i506dk/ssad
+  SCRIPT: ssad.py
 
 jobs:
   version:
@@ -18,6 +19,38 @@ jobs:
         with:
           # Fetch all commits
           fetch-depth: 0
+      
+      # Setup the python version
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: latest
+          architecture: 'x64'
+          cache: 'pip'
+          cache-dependency-path: |
+            **/requirements*.txt
+            
+      # Install dependencies for python
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install nuitka
+      - name: Build
+        run : |
+          python -m nuitka --standalone --enable-plugin=tk-inter --enable-plugin=numpy --assume-yes-for-downloads --output-dir=build --onefile --windows-disable-console ${{ env.SCRIPT }}
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3.1.0
+        with:
+          name: ${{ runner.os }} Build
+          path: |
+            build/*.exe
+            build/*.app/**/*
+      
+      # Download the executable
+      - uses: actions/download-artifact@v3
+        with:
+          name: Windows Build
+          path: .
           
       # Create semantic version
       - name: Semantic Versioning
@@ -40,31 +73,8 @@ jobs:
       
       #- name: Check output
       #  run: echo ${{ steps.versioning.outputs.version_tag }}
-      
-  build:
-    runs-on: windows-latest
-    timeout-minutes: 15
-    steps:
-      # Create executable
-      - name: Build EXE from Python Script
-        # You may pin to the exact commit or the version.
-        # uses: Nuitka/Nuitka-Action@d345ca7ac4d8cf05fae75a6dc53ec04fc5f392f8
-        uses: Nuitka/Nuitka-Action@v0.4
-        with:
-          # name or path to python script that is to be built
-          script-name: ssad.py
-          # Enable standalone mode for output. This allows you to transfer the created binary to other machines without it using an existing Python installation. This also means it will become big. It implies these option: "-- follow-imports" and "--python-flag=no_site". Defaults to true.
-          standalone: true
-          # On top of standalone mode, enable onefile mode. This means not a folder, but a compressed executable is created and used. Defaults to true.
-          onefile: true
-          # Allow Nuitka to download external code if necessary, e.g. dependency walker, ccache, and even gcc on Windows. To disable, redirect input from nul device, e.g. "</dev/null" or "<NUL:". Default is to prompt.
-          assume-yes-for-downloads: true
-          
-  release:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      # Create new release  
+
+      # Create new release
       - name: Create Release
         id: create_release
         uses: actions/create-release@latest
@@ -73,3 +83,15 @@ jobs:
         with:
           tag_name: ${{ steps.versioning.outputs.version_tag }}
           release_name: ${{ steps.versioning.outputs.version_tag }}
+      
+      # Upload executable to the latest release
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: main.exe
+          asset_name: ssad.exe
+          asset_content_type: application/x-msdownload
+          
