@@ -192,7 +192,6 @@ def write_status(status):
 def create_task(task_name, argument_list, script_name=None, script_path=None, computer=None, username=None, domain=None, password=None):
     # Set initial variables
     author="i506dk"
-    task_path = ""
     # Get path to the python interpreter
     python_path = win32api.GetModuleFileName(0)
     # Get full script path if not supplied
@@ -752,7 +751,7 @@ def main_function(admin_password, service_account, service_account_password, hos
                         parse_command("Install-WindowsFeature NET-WCF-HTTP-Activation45")
                         # Write http activation status to file
                         write_status("https_activation = passed")
-                        statuses["https_activation"]
+                        statuses["https_activation"] = "passed"
         
             # Check for tcp activation
             if statuses.__contains__("tcp_activation"):
