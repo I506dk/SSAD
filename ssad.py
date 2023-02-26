@@ -414,17 +414,17 @@ $dataSet.Tables | Format-Table -HideTableHeaders""".format(hostname, database)
             
     # If nothing is written to the content file, assume the command failed
     # And check the error file
-    if len(content) == 0:
-        if os.path.exists(error_path) is True:
-            with open(output_path, "r+") as file:
-                content = file.readlines()
-        else:
-            print("Error file not found.")
+    if content is not None:
+        if len(content) == 0:
+            if os.path.exists(error_path) is True:
+                with open(output_path, "r+") as file:
+                    content = file.readlines()
+            else:
+                print("Error file not found.")
+                
+            print("Getting SQL permissions failed with error: ")
             
-        print("Getting SQL permissions failed with error: ")
-        
-    else:
-        if content is not None:
+        else:
             # Clean up permissions
             i = 0
             while i < len(content):
