@@ -7,7 +7,7 @@ on:
       - 'v*'
 env:
   REPO: i506dk/ssad
-  SCRIPT: ssad.py
+  SCRIPT: ssad
 
 jobs:
   version:
@@ -41,7 +41,7 @@ jobs:
           pip install nuitka
       - name: Build
         run : |
-          python -m nuitka --standalone --enable-plugin=tk-inter --enable-plugin=numpy --assume-yes-for-downloads --output-dir=build --onefile --windows-disable-console ${{ env.SCRIPT }}
+          python -m nuitka --standalone --enable-plugin=tk-inter --enable-plugin=numpy --assume-yes-for-downloads --output-dir=build --onefile --windows-disable-console ${{ env.SCRIPT }}.py
       - name: Upload artifact
         uses: actions/upload-artifact@v3.1.0
         with:
