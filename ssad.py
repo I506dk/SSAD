@@ -16,6 +16,10 @@ import win32con
 import win32api
 import win32net
 import pywintypes
+import win32evtlog
+import win32evtlogutil
+import win32com.client
+
 
 # Secret Server executable
 # https://updates.thycotic.net/SecretServer/setup.exe
@@ -34,9 +38,6 @@ import pywintypes
 
 # Secret Server cli install
 # https://docs.thycotic.com/secrets/current/setup/installation/installing-silent-cli
-
-# Define the path to the registry key
-Startup_Key_Path = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce"
 
 
 # Define a function to run a powershell or commandline command via subprocess and return the string output
@@ -89,30 +90,24 @@ New-IISSiteBinding -Name "Default Web Site" -BindingInformation "*:443:" -Protoc
 # Define a function to install necessary components of iis
 def install_iis():
     iis_script = """[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;
-Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServerRole;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServer;
-Enable-WindowsOptionalFeature -Online -FeatureName IIS-ManagementConsole;
-Enable-WindowsOptionalFeature -Online -FeatureName IIS-ManagementScriptingTools;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServerRole;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-DefaultDocument;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-DirectoryBrowsing;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpErrors;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-StaticContent;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpRedirect;
-Disable-WindowsOptionalFeature -Online -FeatureName IIS-DirectoryBrowsing;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpLogging;
-Enable-WindowsOptionalFeature -Online -FeatureName IIS-CustomLogging;
-Enable-WindowsOptionalFeature -Online -FeatureName IIS-LoggingLibraries;
-Enable-WindowsOptionalFeature -Online -FeatureName IIS-RequestMonitor;
-Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpTracing;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpCompressionStatic;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpCompressionDynamic;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-RequestFiltering;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-WindowsAuthentication;
-Enable-WindowsOptionalFeature -Online -FeatureName IIS-ApplicationInit;
-Enable-WindowsOptionalFeature -Online -FeatureName IIS-ISAPIExtensions;
-Enable-WindowsOptionalFeature -Online -FeatureName IIS-ISAPIFilter;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-ASPNET45;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-NetFxExtensibility45;
-Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebSockets;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-ISAPIExtensions;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-ISAPIFilter;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-ManagementConsole;
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-ManagementScriptingTools;
 Install-Module -Name IISAdministration -Scope AllUsers -AllowClobber -Force;"""
     parse_command(iis_script)
     
@@ -194,72 +189,78 @@ def write_status(status):
     return
 
 
-# Define a function to run an executable at boot
-def run_at_startup_set(appname, arguments, path=None, user=False):
-    # Store the entry in the registry for running the application at startup
-    # Open the registry key path for applications that are run at login
-    key = win32api.RegOpenKeyEx(
-        win32con.HKEY_CURRENT_USER if user else win32con.HKEY_LOCAL_MACHINE,
-        Startup_Key_Path,
-        0,
-        win32con.KEY_WRITE | win32con.KEY_QUERY_VALUE
-    )
-    # Make sure the application is not already in the registry
-    i = 0
-    while True:
-        try:
-            name, _, _ = win32api.RegEnumValue(key, i)
-        except pywintypes.error as e:
-            if e.winerror == winerror.ERROR_NO_MORE_ITEMS:
-                break
-            else:
-                raise
-        if name == appname:
-            win32api.RegCloseKey(key)
-            return
-        i += 1
-        
-    # Add arguments to the key
-    run_parameters = path or win32api.GetModuleFileName(0)
-    for arg in arguments:
-        run_parameters += ' "' + str(arg) + '"'
+# Define a function to create a python scheduled task
+# If computer, username, domain, and password are set to None,
+# The function will use the current domain/user/password and computer (localhost)
+def create_task(task_name, argument_list, script_name=None, script_path=None, computer=None, username=None, domain=None, password=None):
+    # Set initial variables
+    author="i506dk"
+    task_path = ""
+    # Get path to the python interpreter
+    python_path = win32api.GetModuleFileName(0)
+    # Get full script path if not supplied
+    if script_path is None:
+        script_path = __file__
+    # Get script name if not supplied
+    if script_name is None:
+        script_name = os.path.basename(__file__)
+    # Get the current working directory of the script
+    # Working directory is the directory that the script is in
+    working_directory = script_path.replace(script_name, "")
 
-    # Create a new key
-    win32api.RegSetValueEx(key, appname, 0, win32con.REG_SZ, run_parameters)
-    # Close the key
-    win32api.RegCloseKey(key)
-    
-    return
-    
+    # Task specifics
+    # Set the trigger to user logon
+    TASK_TRIGGER_LOGON = 9
+    TASK_CREATE_OR_UPDATE = 6
+    TASK_ACTION_EXEC = 0
+    TASK_LOGON_INTERACTIVE_TOKEN = 3
 
-# Define a function to run a script at boot
-def run_script_at_startup_set(appname, arguments, user=False):
-    # Like run_at_startup_set(), but for source code files
-    run_at_startup_set(
-        appname,
-        arguments,
-        # Set the interpreter path (returned by GetModuleFileName())
-        # followed by the path of the current Python file (__file__).
-        '{} "{}"'.format(win32api.GetModuleFileName(0), __file__),
-        user
-    )
-    
-    return
+    # Connect to the task scheduler
+    scheduler = win32com.client.Dispatch("Schedule.Service")
+    scheduler.Connect(computer, username, domain, password)
+    root_folder = scheduler.GetFolder("\\")
 
+    # Define the task
+    task_definition = scheduler.NewTask(0)
+    task_triggers = task_definition.Triggers
 
-# Define a function to remove a script from runnning at boot
-def run_at_startup_remove(appname, user=False):
-    # Remove the registry application passed
-    key = win32api.RegOpenKeyEx(
-        win32con.HKEY_CURRENT_USER if user else win32con.HKEY_LOCAL_MACHINE,
-        Startup_Key_Path,
-        0,
-        win32con.KEY_WRITE
-    )
-    win32api.RegDeleteValue(key, appname)
-    win32api.RegCloseKey(key)
-    
-    return
+    # Set triggers
+    trigger = task_triggers.Create(TASK_TRIGGER_LOGON)
+    trigger.Id = "LogonTriggerId"
+    # Use the current user
+    trigger.UserId = os.environ.get('USERNAME')
+
+    # Define task actions
+    task_actions = task_definition.Actions
+    action = task_actions.Create(TASK_ACTION_EXEC)
+    action.ID = task_name
+    action.Path = python_path
+    action.WorkingDirectory = working_directory
+    # Add python script as first argument
+    action.Arguments += script_path
+    # Add argument list at the end
+    if type(argument_list) is list:
+        for argument in argument_list:
+            action.Arguments += " " + argument
+
+    # Set task information
+    info = task_definition.RegistrationInfo
+    info.Author = author
+    info.Description = "Scheduled task to run python script at user login."
+
+    # Set additional task settings
+    settings = task_definition.Settings
+    settings.Hidden = False
+
+    # Create the task
+    result = root_folder.RegisterTaskDefinition(task_name, task_definition, TASK_CREATE_OR_UPDATE, "", "", TASK_LOGON_INTERACTIVE_TOKEN)
+    # Check to make sure task was created
+    if task_name in str(result):
+        print("Scheduled task '{}' created, and trigger set to user login.".format(task_name))
+        return True
+    else:
+        print("Failed to create task '{}'".format(task_name))
+        return False
 
 
 # Define a function to restart windows
@@ -291,9 +292,11 @@ def restart_windows(arg_list):
             if script_name in arg:
                 arg_list.remove(arg)
                 
-        run_script_at_startup_set(script_name, arg_list, user=True)
+        #run_script_at_startup_set(script_name, arg_list, user=True)
+        create_task("Secret Server Automated Deployment Tool", arg_list) 
     else:
-        run_script_at_startup_set(script_name, arg_list, user=True)
+        #run_script_at_startup_set(script_name, arg_list, user=True)
+        create_task("Secret Server Automated Deployment Tool", arg_list) 
     
     # Restart system
     os.system("shutdown /r /t 10")
@@ -302,24 +305,43 @@ def restart_windows(arg_list):
     
     return
     
+
+# Define function to search event logs for errors
+def parse_events(machine=None, log_type="System", event_limit=10):
+    # Create and event log object
+    event_log_object = win32evtlog.OpenEventLog(machine, log_type)
+    # Get the number of events
+    event_total = win32evtlog.GetNumberOfEventLogRecords(event_log_object)
     
-# Define a function to cleanup
-def cleanup():
-    # Search for the registry key
-    autorun_key = subprocess.run('reg query "HKEY_CURRENT_USER\\Software\Microsoft\Windows\CurrentVersion\\RunOnce"', capture_output=True)
-    autorun_key = autorun_key.stdout.decode("utf-8")
-    # If key exists, delete it, if not silently pass
-    if autorun_key is not None:
-        if len(autorun_key.strip()) > 0:
-            # Remove registry key
-            run_at_startup_remove(os.path.basename(__file__), user=True)
-
-    # Remove progress file if it exists
-    os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt"
-    if os.path.exists(os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt") is True:
-        os.remove(os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt")
-
-    return
+    # Get past events
+    i = 0
+    while True:
+        # Set flags for the event logs
+        flags = win32evtlog.EVENTLOG_BACKWARDS_READ | win32evtlog.EVENTLOG_SEQUENTIAL_READ
+        # Get event log records
+        records = win32evtlog.ReadEventLog(event_log_object, flags, 0)
+        
+        if not records:
+            print("No events found.")
+            break
+        else:
+            for object in records:
+                log_message = win32evtlogutil.SafeFormatMessage(object, log_type)
+                # Check for any events that contain DCOM and pull out the app id
+                if "DCOM" in str(log_message):
+                    id_strings = re.findall(r'{(.*?)}', log_message)
+                    if len(id_strings) > 1:
+                        app_id = id_strings[-1]
+                        #print(app_id)
+        # Limit number of events
+        if i >= event_limit:
+            break
+        i += 1
+    # Return app id if found
+    if app_id:
+        return app_id
+    else:
+        return None
     
 
 # Define a function to check whether Secret Server is already installed or not
@@ -355,13 +377,13 @@ def previous_install_check():
     # If 2/3 of the checks come back positive, assume Secret Server is already installed
     if validation_count >= 2:
         print("\n" + str(validation_count) + " / 3 validation checks came back positive indicating that Secret Server is currently installed.")
-        input("Exiting...")
-        cleanup()
-        exit()
+        return True
+        #input("Exiting...")
+        #cleanup()
+        #exit()
     else:
         print("\n" + str(validation_count) + " / 3 validation checks came back positive indicating that Secret Server likely isn't installed.")
-        
-    return
+        return False
 
 
 # Define a function to validate SQL database connectivity and credentials
@@ -492,6 +514,27 @@ $dataSet.Tables | Format-Table -HideTableHeaders""".format(hostname, database)
     
     return
     
+    
+# Define a function to cleanup
+def cleanup():
+    # Search for the registry key
+    autorun_key = subprocess.run('reg query "HKEY_CURRENT_USER\\Software\Microsoft\Windows\CurrentVersion\\RunOnce"', capture_output=True)
+    autorun_key = autorun_key.stdout.decode("utf-8")
+    # If key exists, delete it, if not silently pass
+    if autorun_key is not None:
+        if len(autorun_key.strip()) > 0:
+            # Remove registry key
+            run_at_startup_remove(os.path.basename(__file__), user=True)
+
+    # Remove progress file if it exists
+    os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt"
+    if os.path.exists(os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt") is True:
+        os.remove(os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt")
+
+    # Remove scheduled task and any other files
+        
+    return
+    
 
 # Define a function to install secret server
 def install_secret_server(administrator_password, service_account, service_account_password, sql_hostname, database_name = "SecretServer"):
@@ -520,7 +563,7 @@ def install_secret_server(administrator_password, service_account, service_accou
         
         # Output log file to current working directory
         log_file = log_directory + "\\ss-install.log"
-        
+
         # Command for installing secret server silently
         ss_command = [
             installer,
@@ -540,20 +583,16 @@ def install_secret_server(administrator_password, service_account, service_accou
             log_file
         ]
 
+        print("\n\nInstalling Secret Server...")
         # Install Secret Server
-        print("\nInstalling Secret Server...")
-        #os.chmod(installer, 0o777)
-        # Give the local system access to the installer
-        # Determine why ther installer doesn't work when run from the registry
-        #subprocess.Popen('CACLS "{}" /e /p system:f'.format(installer))
         installer_process = subprocess.Popen(ss_command)
-
+            
         # Sleep for 10 seconds
         time.sleep(10)
         
         # Check the PID of the Secret Server installer
         # If it is still running, let it do its thing, otherwise continue
-        print("Checking for installer process...")
+        print("\nChecking for installer process...")
         if installer_process.pid is not None:
             print("Installer found running with PID: {}".format(installer_process.pid))
             while psutil.pid_exists(int(installer_process.pid)) is True:
@@ -570,7 +609,16 @@ def install_secret_server(administrator_password, service_account, service_accou
                             sys.stdout.write('\b \b')
                             j -= 1
         else:
-            print("No installer found running. Continuing...")
+            # If no process is found check for errors or failure
+            post_check = previous_install_check()
+            if post_check is True:
+                print("No installer found running. Continuing...")
+            else:
+                # Assume the install failed and check the event logs
+                installer_id = parse_events()
+                if installer_id is not None:
+                    # do the bypass
+                    pass
 
         # Print finish message along with url and credentials
         print("\nSecret Server can be accessed at 'https://{}/SecretServer'".format(socket.getfqdn()))
@@ -878,7 +926,7 @@ def main_function(admin_password, service_account, service_account_password, hos
                         # Write dotnet status to file
                         write_status("dotnet_48 = awaiting restart")
                         # Restart server
-                        restart_windows(["-s", hostname, "-d", database, "-p", current_user_password, "-sa", service_account, "-sap", service_account_password, "-a", admin_password])
+                        restart_windows(["-s", hostname, "-d", database, "-sa", service_account, "-sap", service_account_password, "-a", admin_password])
                         
                 else:
                     print("Installing Dotnet 4.8 on this server...")
@@ -886,10 +934,10 @@ def main_function(admin_password, service_account, service_account_password, hos
                     # Write dotnet status to file
                     write_status("dotnet_48 = awaiting restart")
                     # Restart server
-                    restart_windows(["-s", hostname, "-d", database, "-p", current_user_password, "-sa", service_account, "-sap", service_account_password, "-a", admin_password])
+                    restart_windows(["-s", hostname, "-d", database, "-sa", service_account, "-sap", service_account_password, "-a", admin_password])
             elif statuses["dotnet_48"] == "awaiting restart":
                 # Restart server
-                restart_windows(["-s", hostname, "-d", database, "-p", current_user_password, "-sa", service_account, "-sap", service_account_password, "-a", admin_password])
+                restart_windows(["-s", hostname, "-d", database, "-sa", service_account, "-sap", service_account_password, "-a", admin_password])
             else:
                 # Silently pass as dotnet is already installed
                 pass
@@ -915,14 +963,14 @@ def main_function(admin_password, service_account, service_account_password, hos
                     # Write dotnet status to file
                     write_status("dotnet_48 = awaiting restart")
                     # Restart server
-                    restart_windows(["-s", hostname, "-d", database, "-p", current_user_password, "-sa", service_account, "-sap", service_account_password, "-a", admin_password])
+                    restart_windows(["-s", hostname, "-d", database, "-sa", service_account, "-sap", service_account_password, "-a", admin_password])
             else:
                 print("Installing Dotnet 4.8 on this server...")
                 install_dotnet()
                 # Write dotnet status to file
                 write_status("dotnet_48 = awaiting restart")
                 # Restart server
-                restart_windows(["-s", hostname, "-d", database, "-p", current_user_password, "-sa", service_account, "-sap", service_account_password, "-a", admin_password])
+                restart_windows(["-s", hostname, "-d", database, "-sa", service_account, "-sap", service_account_password, "-a", admin_password])
 
         # Check to make sure all prerequisites passed
         if all(statuses[item] == "passed" for item in statuses):
@@ -936,6 +984,9 @@ def main_function(admin_password, service_account, service_account_password, hos
   
         # Check to see if secret server is already installed or not
         ss_install = previous_install_check()
+        if ss_install is True:
+            input("Exiting...")
+            cleanup()
         
         # Validate permissions and connectivity for the sql server
         validate_sql(service_account, service_account_password, hostname, database)
@@ -972,7 +1023,7 @@ def parse():
         
     # Add argument that contains the password of the service account             
     parser.add_argument("-sap", "--service_account_password", dest="service_account_password", action="store", type=str, required=False,
-        help="The password for the service account used to connect to SQL.")  
+        help="The password for the service account used to connect to SQL.") 
         
     # Add argument that contains the password of the local administrator account in secret server            
     parser.add_argument("-a", "--administrator", dest="admin_password", action="store", type=str, required=False,
@@ -1001,7 +1052,7 @@ if __name__ == '__main__':
             if key == "service_account":
                 args.service_account = input("Please enter the service account used to connect to SQL. Username should be in the format 'domain\\username': ")
             if key == "service_account_password":
-                args.service_account_password = input("Please enter the password for the service account used to connect to SQL: "))
+                args.service_account_password = input("Please enter the password for the service account used to connect to SQL: ")
             if key == "admin_password":
                 args.admin_password = input("Please enter the password for the local administrator account in Secret Server: ")
 
