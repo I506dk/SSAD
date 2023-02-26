@@ -11,13 +11,7 @@ import subprocess
 import requests
 import psutil
 # 'pip install pywin32' needed for the below libraries
-import winerror
-import win32con
 import win32api
-import win32net
-import pywintypes
-import win32evtlog
-import win32evtlogutil
 import win32com.client
 
 
@@ -124,6 +118,10 @@ def install_sql_dev():
 
 # Define a function to get process information for the file path specified
 def process_exists(file_path):
+    # Initialize return variables
+    current_process = None
+    process_path = None
+    process_pid = None
     # Get the current username
     current_user = os.getlogin()
     # Get all current running processes
@@ -139,9 +137,8 @@ def process_exists(file_path):
                 current_process = process_info["name"]
                 process_pid = process_info["pid"]
                 
-                return current_process, process_path, process_pid
-            else:
-                return None, None, None
+    return current_process, process_path, process_pid
+
 
 
 # Define function to print out progress
@@ -271,7 +268,7 @@ def restart_windows(arg_list):
     progress_file = os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt"
     if os.path.exists(progress_file) is True:
         with open(progress_file, "r+") as file:
-            content = file.readlines()
+            nonlocal content = file.readlines()
 
     # Overwrite file
     with open(progress_file, "w") as file:
@@ -407,7 +404,7 @@ $dataSet.Tables | Format-Table -HideTableHeaders""".format(hostname, database)
     # Output gets written to text file. Read it back in
     if os.path.exists(output_path) is True:
         with open(output_path, "r+") as file:
-            content = file.readlines()
+            nonlocal content = file.readlines()
     else:
         print("Output file not found.")
             
@@ -513,7 +510,7 @@ def install_secret_server(administrator_password, service_account, service_accou
             for contents in os.walk(log_directory):
                 for file in contents[2]:
                     current_file = log_directory + "\\" + file
-                    os.chmod(current_file, 0o777)
+                    #os.chmod(current_file, 0o777)
                     os.remove(current_file)
         else:
             os.mkdir(log_directory)
@@ -577,7 +574,7 @@ def install_secret_server(administrator_password, service_account, service_accou
 
         # Print finish message along with url and credentials
         print("\nSecret Server can be accessed at 'https://{}/SecretServer'".format(socket.getfqdn()))
-        print("\nAdministrator credentials for Secret Server are 'administrator' with password '{}'".format(administrator_password))
+        print("\nLocal administrator account for Secret Server created with username 'administrator'.")
         print("Secret Server installation log files are located at '{}'".format(log_file))
         input("Press any key to exit...")
         
