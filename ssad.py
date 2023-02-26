@@ -292,10 +292,8 @@ def restart_windows(arg_list):
             if script_name in arg:
                 arg_list.remove(arg)
                 
-        #run_script_at_startup_set(script_name, arg_list, user=True)
         create_task("Secret Server Automated Deployment Tool", arg_list) 
     else:
-        #run_script_at_startup_set(script_name, arg_list, user=True)
         create_task("Secret Server Automated Deployment Tool", arg_list) 
     
     # Restart system
@@ -304,44 +302,6 @@ def restart_windows(arg_list):
     exit()
     
     return
-    
-
-# Define function to search event logs for errors
-def parse_events(machine=None, log_type="System", event_limit=10):
-    # Create and event log object
-    event_log_object = win32evtlog.OpenEventLog(machine, log_type)
-    # Get the number of events
-    event_total = win32evtlog.GetNumberOfEventLogRecords(event_log_object)
-    
-    # Get past events
-    i = 0
-    while True:
-        # Set flags for the event logs
-        flags = win32evtlog.EVENTLOG_BACKWARDS_READ | win32evtlog.EVENTLOG_SEQUENTIAL_READ
-        # Get event log records
-        records = win32evtlog.ReadEventLog(event_log_object, flags, 0)
-        
-        if not records:
-            print("No events found.")
-            break
-        else:
-            for object in records:
-                log_message = win32evtlogutil.SafeFormatMessage(object, log_type)
-                # Check for any events that contain DCOM and pull out the app id
-                if "DCOM" in str(log_message):
-                    id_strings = re.findall(r'{(.*?)}', log_message)
-                    if len(id_strings) > 1:
-                        app_id = id_strings[-1]
-                        #print(app_id)
-        # Limit number of events
-        if i >= event_limit:
-            break
-        i += 1
-    # Return app id if found
-    if app_id:
-        return app_id
-    else:
-        return None
     
 
 # Define a function to check whether Secret Server is already installed or not
@@ -378,9 +338,6 @@ def previous_install_check():
     if validation_count >= 2:
         print("\n" + str(validation_count) + " / 3 validation checks came back positive indicating that Secret Server is currently installed.")
         return True
-        #input("Exiting...")
-        #cleanup()
-        #exit()
     else:
         print("\n" + str(validation_count) + " / 3 validation checks came back positive indicating that Secret Server likely isn't installed.")
         return False
@@ -493,7 +450,6 @@ $dataSet.Tables | Format-Table -HideTableHeaders""".format(hostname, database)
     else:
         print("\nService account '{}' does not have the correct permissions on the database '{}'".format(service_account, database))
         sql_permission_pass = False
-
     
     # Check for errors that show up here
     if (sql_connection_pass is True) and (sql_permission_pass is True):
@@ -530,9 +486,10 @@ def cleanup():
     os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt"
     if os.path.exists(os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt") is True:
         os.remove(os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt")
+    
+    # Remove scheduled task
+    subprocess.Popen('schtasks /delete /tn "Secret Server Automated Deployment Tool" /f')
 
-    # Remove scheduled task and any other files
-        
     return
     
 
@@ -595,19 +552,18 @@ def install_secret_server(administrator_password, service_account, service_accou
         print("\nChecking for installer process...")
         if installer_process.pid is not None:
             print("Installer found running with PID: {}".format(installer_process.pid))
+            j = 1
             while psutil.pid_exists(int(installer_process.pid)) is True:
-                j = 1
-                while True:
-                    if j < 5:
-                        print("\rInstaller still running" + "."*j, end="")
-                        time.sleep(1)
-                        j += 1
-                    else:
-                        print("\rInstaller still running" + "."*j, end="")
-                        time.sleep(1)
-                        while j > 0:
-                            sys.stdout.write('\b \b')
-                            j -= 1
+                if j < 5:
+                    print("\rInstaller still running" + "."*j, end="")
+                    time.sleep(1)
+                    j += 1
+                else:
+                    print("\rInstaller still running" + "."*j, end="")
+                    time.sleep(1)
+                    while j > 0:
+                        sys.stdout.write('\b \b')
+                        j -= 1
         else:
             # If no process is found check for errors or failure
             post_check = previous_install_check()
@@ -615,10 +571,9 @@ def install_secret_server(administrator_password, service_account, service_accou
                 print("No installer found running. Continuing...")
             else:
                 # Assume the install failed and check the event logs
-                installer_id = parse_events()
-                if installer_id is not None:
-                    # do the bypass
-                    pass
+                print("Installation of Secret Server failed.")
+                input("Press any key to exit...")
+                exit()
 
         # Print finish message along with url and credentials
         print("\nSecret Server can be accessed at 'https://{}/SecretServer'".format(socket.getfqdn()))
@@ -629,11 +584,13 @@ def install_secret_server(administrator_password, service_account, service_accou
         # Once Secret Server is installed and configured, delete the setup.exe file
         if os.path.exists(installer) is True:
             os.remove(installer)
+            
+        return True
 
     except Exception as error:
         print("Failed with error: {}".format(error))
 
-    return
+        return False
 
 
 # Catch first install that may already have site binding
@@ -992,7 +949,11 @@ def main_function(admin_password, service_account, service_account_password, hos
         validate_sql(service_account, service_account_password, hostname, database)
         
         # Install Secret Server
-        install_secret_server(admin_password, service_account, service_account_password, hostname, database)
+        install_complete = install_secret_server(admin_password, service_account, service_account_password, hostname, database)
+        if install_complete is True:
+            cleanup()
+        else:
+            print("Installation of Secret Server failed.")
     
     # Don't know what this would be. Assume normal windows variant.
     else:
