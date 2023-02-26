@@ -78,7 +78,7 @@ python ssad.py -s my-sql-server -d SecretServer -sa test.domain\service_account 
 
 ## To Do
 - [ ] Create function to remotely install and configure MS SQL (SQL express, and SQL Dev versions)
-- [ ] Add option to create the necessary service accounts to run basica Secret Server functionality
+- [ ] Add option to create the necessary service accounts to run basic Secret Server functionality/tasks
 - [ ] Automate the setup of distributed engines on remote machines (if possible)
 - [ ] Automate the setup of RabbitMQ and site connectors
 - [ ] Add uninstall option if previous install is found
