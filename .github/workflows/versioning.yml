@@ -48,7 +48,7 @@ jobs:
         uses: Nuitka/Nuitka-Action@v0.4
         with:
           # name or path to python script that is to be built
-          script-name: ${{ github.event.repository.name }}
+          script-name: ssad.py
           # Enable standalone mode for output. This allows you to transfer the created binary to other machines without it using an existing Python installation. This also means it will become big. It implies these option: "-- follow-imports" and "--python-flag=no_site". Defaults to true.
           standalone: true
           # On top of standalone mode, enable onefile mode. This means not a folder, but a compressed executable is created and used. Defaults to true.
