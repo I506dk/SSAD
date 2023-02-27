@@ -192,18 +192,7 @@ def write_status(status):
 def create_task(task_name, argument_list, script_name=None, script_path=None, computer=None, username=None, domain=None, password=None):
     # Set initial variables
     author="i506dk"
-    # Get path to the python interpreter
-    python_path = win32api.GetModuleFileName(0)
-    # Get full script path if not supplied
-    if script_path is None:
-        script_path = __file__
-    # Get script name if not supplied
-    if script_name is None:
-        script_name = os.path.basename(__file__)
-    # Get the current working directory of the script
-    # Working directory is the directory that the script is in
-    working_directory = script_path.replace(script_name, "")
-
+    
     # Task specifics
     # Set the trigger to user logon
     TASK_TRIGGER_LOGON = 9
@@ -230,19 +219,57 @@ def create_task(task_name, argument_list, script_name=None, script_path=None, co
     task_actions = task_definition.Actions
     action = task_actions.Create(TASK_ACTION_EXEC)
     action.ID = task_name
-    action.Path = python_path
-    action.WorkingDirectory = working_directory
-    # Add python script as first argument
-    action.Arguments += script_path
-    # Add argument list at the end
-    if type(argument_list) is list:
-        for argument in argument_list:
-            action.Arguments += " " + argument
+    
+    # Check to determine if this is running as an exe or not
+    current_file_name = __file__
+    current_path = os.path.realpath(__file__)
+    if ("AppData" in current_file_name) and ("onefile" in current_path):
+        print("treating as exe")
+        # Assume that this is an executable as it should never be running from here
+        working_directory = os.getcwd()
+        # Create executable name
+        executable_name = os.path.basename(__file__)
+        executable_name = executable_name.replace(".py", ".exe")
+        # Add executable name to current working directory
+        exe_path = working_directory + "\\" + str(executable_name)
+        # Figure out which is needed here
+        action.Path = exe_path
+        action.WorkingDirectory = working_directory
+        # Add argument list at the end
+        if type(argument_list) is list:
+            for argument in argument_list:
+                action.Arguments += " " + argument
+        else:
+            action.Arguments += " " + argument_list
+    else:
+        print("treating as script")
+        # Get path to the python interpreter
+        python_path = win32api.GetModuleFileName(0)
+        # Get full script path if not supplied
+        if script_path is None:
+            script_path = __file__
+        # Get script name if not supplied
+        if script_name is None:
+            script_name = os.path.basename(__file__)
+        # Get the current working directory of the script
+        # Working directory is the directory that the script is in
+        working_directory = script_path.replace(script_name, "")
+
+        action.Path = python_path
+        action.WorkingDirectory = working_directory
+        # Add python script as first argument
+        action.Arguments += script_path
+        # Add argument list at the end
+        if type(argument_list) is list:
+            for argument in argument_list:
+                action.Arguments += " " + argument
+        else:
+            action.Arguments += " " + argument_list
 
     # Set task information
     info = task_definition.RegistrationInfo
     info.Author = author
-    info.Description = "Scheduled task to run python script at user login."
+    info.Description = "Scheduled task to run ssad at user login."
 
     # Set additional task settings
     settings = task_definition.Settings
