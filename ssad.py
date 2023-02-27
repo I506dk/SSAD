@@ -36,24 +36,24 @@ import win32com.client
 
 # Define a function to run a powershell or commandline command via subprocess and return the string output
 def parse_command(command):
-    try:    
+    try:
         command = subprocess.run(["powershell.exe", "-Command", command], capture_output=True)
         command_output = command.stdout.decode("utf-8")
         command_output = command_output.replace('\n', '')
         command_output = command_output.replace('\r', '')
-        
+
         if command.returncode != 0:
             print(command.stderr)
             return (command.stderr.decode("utf-8"))
         else:
             return command_output
-        
+
     except subprocess.CalledProcessError as e:
         print(e)
 
         return None
 
-    
+
 # Define a function to install dotnet 4.8 using a powershell script
 # Requires a restart
 def install_dotnet():
@@ -65,7 +65,7 @@ Remove-Item $save_path"""
     parse_command(dotnet_script)
 
     return
-    
+
 
 # Define a function to create https binding using a powershell script
 def create_binding():
@@ -77,9 +77,9 @@ $certificate = New-SelfSignedCertificate -DnsName $fqdn -CertStoreLocation $cert
 $certificate_thumbprint = $certificate.Thumbprint;
 New-IISSiteBinding -Name "Default Web Site" -BindingInformation "*:443:" -Protocol https -CertificateThumbPrint $certificate_thumbprint -CertStoreLocation $cert_path"""
     parse_command(binding_script)
-    
+
     return
-    
+
 
 # Define a function to install necessary components of iis
 def install_iis():
@@ -104,17 +104,17 @@ Enable-WindowsOptionalFeature -Online -FeatureName IIS-ManagementConsole;
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-ManagementScriptingTools;
 Install-Module -Name IISAdministration -Scope AllUsers -AllowClobber -Force;"""
     parse_command(iis_script)
-    
+
     return
 
-    
+
 # Define a function to download and install microsoft sql dev
 def install_sql_dev():
     sql_script = """ """
     parse_command(sql_script)
-    
+
     return
-    
+
 
 # Define a function to get process information for the file path specified
 def process_exists(file_path):
@@ -136,7 +136,7 @@ def process_exists(file_path):
                 process_path = os.path.abspath(process_info["name"])
                 current_process = process_info["name"]
                 process_pid = process_info["pid"]
-                
+
     return current_process, process_path, process_pid
 
 
@@ -168,21 +168,21 @@ def download_file(url, save_path):
                 current_chunk += 1024
     # Close file
     file.close()
-    
+
     return
 
 
 # Define a function to write status to progress file
 def write_status(status):
     path = os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt"
-    
+
     if os.path.exists(path) is True:
         with open(path, "a+") as file:
             file.write(status)
             file.write('\n')
     else:
         print("Unable to find progress file.")
-        
+
     return
 
 
@@ -281,7 +281,7 @@ def restart_windows(arg_list):
                     file.write(new_line)
                 else:
                     file.write(line)
-        
+
     # Set script to re-run at boot with the arguments originally passed to it
     script_name = os.path.basename(__file__)
     # Remove script name/path from arguments
@@ -290,25 +290,25 @@ def restart_windows(arg_list):
         for arg in arg_list:
             if script_name in arg:
                 arg_list.remove(arg)
-                
-        create_task("Secret Server Automated Deployment Tool", arg_list) 
+
+        create_task("Secret Server Automated Deployment Tool", arg_list)
     else:
-        create_task("Secret Server Automated Deployment Tool", arg_list) 
-    
+        create_task("Secret Server Automated Deployment Tool", arg_list)
+
     # Restart system
     os.system("shutdown /r /t 10")
     print("Awaiting restart.")
     exit()
-    
+
     return
-    
+
 
 # Define a function to check whether Secret Server is already installed or not
 def previous_install_check():
     print("\nChecking for previous Secret Server installation...")
     # Initialize a counter to count how many variables indicate a previous install
     validation_count = 0
-    
+
     # Check to see if the Secret Server application exists
     secret_server_application = parse_command('Get-WmiObject -Class Win32_Product | Where {$_.Name -like "*secret server*"}')
     if (secret_server_application is None) or (len(secret_server_application) == 0):
@@ -316,7 +316,7 @@ def previous_install_check():
     else:
         print("  - Secret Server application found.")
         validation_count += 1
-    
+
     # Check if Secret Server files exist for IIS
     secret_server_files = os.path.exists("C:\\inetpub\\wwwroot\\SecretServer")
     if secret_server_files == True:
@@ -324,7 +324,7 @@ def previous_install_check():
         validation_count += 1
     else:
         print("  - No previous Secret Server application files found.")
-        
+
     # Check to see if registry keys exist for secret server
     secret_server_registry = parse_command("Test-Path 'HKLM:\Software\Thycotic\Secret Server'")
     if secret_server_registry == "True":
@@ -332,7 +332,7 @@ def previous_install_check():
         validation_count += 1
     else:
         print("  - No previous Secret Server registry keys found.")
-        
+
     # If 2/3 of the checks come back positive, assume Secret Server is already installed
     if validation_count >= 2:
         print("\n" + str(validation_count) + " / 3 validation checks came back positive indicating that Secret Server is currently installed.")
@@ -350,30 +350,30 @@ def validate_sql(service_account, service_account_password, hostname, database, 
     #    print("\nConnection to SQL server succeeded.")
     #else:
     #    print("\nConenction failed. Couldn't connect to server.")
-        
+
     # Create socket
     create_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     # Specify destination or server:port to connect to
     destination = (hostname, port)
     # Test connection
     result = create_socket.connect_ex(destination)
-    
+
     # If 0 is returned, connection was successful
     if result == 0:
-       print("\nConnection to SQL server succeeded.")
-       sql_connection_pass = True
+        print("\nConnection to SQL server succeeded.")
+        sql_connection_pass = True
     else:
         print("\nConenction failed. Couldn't connect to server.")
         sql_connection_pass = False
-        
+
     # Close socket
     create_socket.close()
-    
+
     # Define paths to script, output, and error files
     script_path = os.path.dirname(os.path.realpath(__file__)) + "\\script.ps1"
     output_path = os.path.dirname(os.path.realpath(__file__)) + "\\output.txt"
     error_path = os.path.dirname(os.path.realpath(__file__)) + "\\error.txt"
-    
+
     # Initialize powershell script contents to check sql permissions
     script_content = """$sql_command = "SELECT * FROM fn_my_permissions(NULL, 'DATABASE');"
 $sql_connection = New-Object System.Data.SqlClient.SqlConnection
@@ -385,12 +385,12 @@ $dataset = New-Object System.Data.DataSet
 $adapter.Fill($dataSet) | Out-Null
 $sql_connection.Close()
 $dataSet.Tables | Format-Table -HideTableHeaders""".format(hostname, database)
-    
+
     # Write powershell to script file
     with open(script_path, "w+") as file:
         # Break items apart and add to dictionary
         file.write(script_content)
-    
+
     # Run script as service account
     sql_command = "Start-Process powershell.exe '{}' -Credential (New-Object System.Management.Automation.PSCredential '{}', (ConvertTo-SecureString '{}' -AsPlainText -Force)) -PassThru -Wait -RedirectStandardOutput '{}' -RedirectStandardError '{}' -WindowStyle hidden".format(
         script_path,
@@ -402,7 +402,7 @@ $dataSet.Tables | Format-Table -HideTableHeaders""".format(hostname, database)
 
     # Wait for process to complete
     parse_command(sql_command)
-    
+
     # Output gets written to text file. Read it back in
     if os.path.exists(output_path) is True:
         with open(output_path, "r+") as file:
@@ -410,7 +410,7 @@ $dataSet.Tables | Format-Table -HideTableHeaders""".format(hostname, database)
     else:
         print("Output file not found.")
         content = None
-            
+
     # If nothing is written to the content file, assume the command failed
     # And check the error file
     if content is not None:
@@ -420,9 +420,9 @@ $dataSet.Tables | Format-Table -HideTableHeaders""".format(hostname, database)
                     content = file.readlines()
             else:
                 print("Error file not found.")
-                
+
             print("Getting SQL permissions failed with error: ")
-            
+
         else:
             # Clean up permissions
             i = 0
@@ -436,14 +436,14 @@ $dataSet.Tables | Format-Table -HideTableHeaders""".format(hostname, database)
                     current_line = current_line.replace("database", '')
                     current_line = current_line.strip()
                     content[i] = current_line
-                    
+
                 i += 1
-            
+
             # Print out the permissions returned after parsing
             print("\nSql Permissions for service account {}: ".format(service_account))
             for item in content:
                 print("  - " + str(item))
-        
+
     # Accounts needs create and view permissions on the database
     if content is not None:
         if ("CREATE DATABASE" in content) and ("VIEW ANY COLUMN ENCRYPTION KEY DEFINITION" in content) and ("VIEW ANY COLUMN MASTER KEY DEFINITION" in content):
@@ -452,11 +452,11 @@ $dataSet.Tables | Format-Table -HideTableHeaders""".format(hostname, database)
     else:
         print("\nService account '{}' does not have the correct permissions on the database '{}'".format(service_account, database))
         sql_permission_pass = False
-    
+
     # Check for errors that show up here
     if (sql_connection_pass is True) and (sql_permission_pass is True):
         print("SQL validation passed. Continuing...")
-        
+
         # Cleanup
         if os.path.exists(output_path) is True:
             os.remove(output_path)
@@ -464,15 +464,15 @@ $dataSet.Tables | Format-Table -HideTableHeaders""".format(hostname, database)
             os.remove(error_path)
         if os.path.exists(script_path) is True:
             os.remove(script_path)
-            
+
     else:
         input("SQL validation failed. Exiting...")
         cleanup()
         exit()
-    
+
     return
-    
-    
+
+
 # Define a function to cleanup
 def cleanup():
     # Search for the registry key
@@ -488,12 +488,12 @@ def cleanup():
     os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt"
     if os.path.exists(os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt") is True:
         os.remove(os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt")
-    
+
     # Remove scheduled task
     subprocess.Popen('schtasks /delete /tn "Secret Server Automated Deployment Tool" /f')
 
     return
-    
+
 
 # Define a function to install secret server
 def install_secret_server(administrator_password, service_account, service_account_password, sql_hostname, database_name = "SecretServer"):
@@ -501,12 +501,12 @@ def install_secret_server(administrator_password, service_account, service_accou
     installer_url = "https://updates.thycotic.net/SecretServer/setup.exe"
     # Set download path
     installer = os.path.dirname(os.path.realpath(__file__)) + "\\setup.exe"
-    
+
     try:
         # Download Secret Server
         print("\nDownloading Secret Server installer...")
         download_file(installer_url, installer)
-        
+
         # Create log folder
         log_directory = os.path.dirname(os.path.realpath(__file__)) + "\\Logs"
         if os.path.exists(log_directory) is True:
@@ -519,7 +519,7 @@ def install_secret_server(administrator_password, service_account, service_accou
                     os.remove(current_file)
         else:
             os.mkdir(log_directory)
-        
+
         # Output log file to current working directory
         log_file = log_directory + "\\ss-install.log"
 
@@ -545,10 +545,10 @@ def install_secret_server(administrator_password, service_account, service_accou
         print("\n\nInstalling Secret Server...")
         # Install Secret Server
         installer_process = subprocess.Popen(ss_command)
-            
+
         # Sleep for 10 seconds
         time.sleep(10)
-        
+
         # Check the PID of the Secret Server installer
         # If it is still running, let it do its thing, otherwise continue
         print("\nChecking for installer process...")
@@ -582,11 +582,11 @@ def install_secret_server(administrator_password, service_account, service_accou
         print("\nLocal administrator account for Secret Server created with username 'administrator'.")
         print("Secret Server installation log files are located at '{}'".format(log_file))
         input("Press any key to exit...")
-        
+
         # Once Secret Server is installed and configured, delete the setup.exe file
         if os.path.exists(installer) is True:
             os.remove(installer)
-            
+
         return True
 
     except Exception as error:
@@ -612,7 +612,7 @@ def main_function(admin_password, service_account, service_account_password, hos
 
         # Create a text file to check progress
         progress_file = os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt"
-        
+
         # Initialize a dictionary to hold statuses of each item to be installed
         statuses = {}
 
@@ -625,7 +625,7 @@ def main_function(admin_password, service_account, service_account_password, hos
                 for line in content:
                     line = line.strip('\n')
                     item, status = line.split(" = ")
-                    statuses[item] = status    
+                    statuses[item] = status
         else:
             with open(progress_file, "w+") as file:
                 print("Progress file not found. Creating...")
@@ -642,7 +642,7 @@ def main_function(admin_password, service_account, service_account_password, hos
                     # Write iis status to file
                     write_status("iis = passed")
                     statuses["iis"] = "passed"
-                    
+
                     # If IIS is installed, check https site binding
                     https_binding = parse_command('(Get-IISSiteBinding -Name "Default Web Site" -Protocol https).bindingInformation')
                     # Create https binding if it doesn't already exist
@@ -657,7 +657,7 @@ def main_function(admin_password, service_account, service_account_password, hos
                         # Write binding status to file
                         write_status("binding = passed")
                         statuses["binding"] = "passed"
-                        
+
                     # Check for https activation
                     https_activation_state = parse_command("(Get-WindowsFeature NET-WCF-HTTP-Activation45).InstallState")
                     # Install https activation if not already installed
@@ -672,7 +672,7 @@ def main_function(admin_password, service_account, service_account_password, hos
                         # Write http activation status to file
                         write_status("https_activation = passed")
                         statuses["https_activation"] = "passed"
-                     
+
                     # Check for tcp activation
                     tcp_activation_state = parse_command("(Get-WindowsFeature NET-WCF-TCP-Activation45).InstallState")
                     # Install tcp activation if not already installed
@@ -687,7 +687,7 @@ def main_function(admin_password, service_account, service_account_password, hos
                         # Write tcp activation status to file
                         write_status("tcp_activation = passed")
                         statuses["tcp_activation"] = "passed"
-                        
+
                 else:
                     # Install IIS
                     print("Installing Internet Information Services (IIS) on this server...")
@@ -695,27 +695,27 @@ def main_function(admin_password, service_account, service_account_password, hos
                     # Write iis status to file
                     write_status("iis = passed")
                     statuses["iis"] = "passed"
-                    
+
                     # Create HTTPS binding using self signed certificate
                     print("Creating HTTPS binding on this server...")
                     create_binding()
                     # Write binding status to file
                     write_status("binding = passed")
                     statuses["binding"] = "passed"
-                    
+
                     print("Installing HTTP activation on this server...")
                     parse_command("Install-WindowsFeature NET-WCF-HTTP-Activation45")
                     # Write http activation status to file
                     write_status("https_activation = passed")
                     statuses["https_activation"] = "passed"
-                    
+
                     print("Installing TCP activation on this server...")
                     parse_command("Install-WindowsFeature NET-WCF-TCP-Activation45")
                     # Write tcp activation status to file
                     write_status("tcp_activation = passed")
                     statuses["tcp_activation"] = "passed"
-             
-                
+
+
             # Check for https binding
             if statuses.__contains__("binding"):
                 # Install https binding
@@ -734,7 +734,7 @@ def main_function(admin_password, service_account, service_account_password, hos
                         # Write binding status to file
                         write_status("binding = passed")
                         statuses["binding"] = "passed"
-        
+
             # Check for https activation
             if statuses.__contains__("https_activation"):
                 if statuses["https_activation"] != "passed":
@@ -752,7 +752,7 @@ def main_function(admin_password, service_account, service_account_password, hos
                         # Write http activation status to file
                         write_status("https_activation = passed")
                         statuses["https_activation"] = "passed"
-        
+
             # Check for tcp activation
             if statuses.__contains__("tcp_activation"):
                 if statuses["tcp_activation"] != "passed":
@@ -770,8 +770,8 @@ def main_function(admin_password, service_account, service_account_password, hos
                         # Write tcp activation status to file
                         write_status("tcp_activation = passed")
                         statuses["tcp_activation"] = "passed"
-            
-        # This should be the deafult case. No progress file, nothing installed.  
+
+        # This should be the deafult case. No progress file, nothing installed.
         else:
             # Install everything
             # Check if IIS is currently installed or not.
@@ -782,7 +782,7 @@ def main_function(admin_password, service_account, service_account_password, hos
                 # Write iis status to file
                 write_status("iis = passed")
                 statuses["iis"] = "passed"
-                
+
                 # If IIS is installed, check https site binding
                 https_binding = parse_command('(Get-IISSiteBinding -Name "Default Web Site" -Protocol https).bindingInformation')
                 # Create https binding if it doesn't already exist
@@ -797,7 +797,7 @@ def main_function(admin_password, service_account, service_account_password, hos
                     # Write binding status to file
                     write_status("binding = passed")
                     statuses["binding"] = "passed"
-                    
+
                 # Check for https activation
                 https_activation_state = parse_command("(Get-WindowsFeature NET-WCF-HTTP-Activation45).InstallState")
                 # Install https activation if not already installed
@@ -812,7 +812,7 @@ def main_function(admin_password, service_account, service_account_password, hos
                     # Write http activation status to file
                     write_status("https_activation = passed")
                     statuses["https_activation"] = "passed"
-                 
+
                 # Check for tcp activation
                 tcp_activation_state = parse_command("(Get-WindowsFeature NET-WCF-TCP-Activation45).InstallState")
                 # Install tcp activation if not already installed
@@ -834,7 +834,7 @@ def main_function(admin_password, service_account, service_account_password, hos
                 # Write iis status to file
                 write_status("iis = passed")
                 statuses["iis"] = "passed"
-                
+
                 # Check https site binding
                 https_binding = parse_command('(Get-IISSiteBinding -Name "Default Web Site" -Protocol https).bindingInformation')
                 # Create https binding if it doesn't already exist
@@ -849,13 +849,13 @@ def main_function(admin_password, service_account, service_account_password, hos
                     # Write binding status to file
                     write_status("binding = passed")
                     statuses["binding"] = "passed"
-                
+
                 print("Installing HTTP activation on this server...")
                 parse_command("Install-WindowsFeature NET-WCF-HTTP-Activation45")
                 # Write http activation status to file
                 write_status("https_activation = passed")
                 statuses["https_activation"] = "passed"
-                
+
                 print("Installing TCP activation on this server...")
                 parse_command("Install-WindowsFeature NET-WCF-TCP-Activation45")
                 # Write tcp activation status to file
@@ -886,7 +886,7 @@ def main_function(admin_password, service_account, service_account_password, hos
                         write_status("dotnet_48 = awaiting restart")
                         # Restart server
                         restart_windows(["-s", hostname, "-d", database, "-sa", service_account, "-sap", service_account_password, "-a", admin_password])
-                        
+
                 else:
                     print("Installing Dotnet 4.8 on this server...")
                     install_dotnet()
@@ -900,7 +900,7 @@ def main_function(admin_password, service_account, service_account_password, hos
             else:
                 # Silently pass as dotnet is already installed
                 pass
-                
+
         else:
             # Install dotnet framework 4.8 if not already installed.
             dotnet_check = subprocess.run('reg query "HKEY_LOCAL_MACHINE\\SOFTWARE\Microsoft\\NET Framework Setup\\NDP\\v4\\full" /v version', capture_output=True)
@@ -914,7 +914,7 @@ def main_function(admin_password, service_account, service_account_password, hos
                 if "4.8" in dotnet_version:
                     print("Dotnet 4.8 is installed on this server. Continuing...")
                     # Write dotnet status to file
-                    write_status("dotnet_48 = passed") 
+                    write_status("dotnet_48 = passed")
                     statuses["dotnet_48"] = "passed"
                 else:
                     print("Installing Dotnet 4.8 on this server...")
@@ -940,28 +940,28 @@ def main_function(admin_password, service_account, service_account_password, hos
                 if statuses[item] != "passed":
                     print(item + " did not pass validation checks, and has status: " + statuses[item])
 
-  
+
         # Check to see if secret server is already installed or not
         ss_install = previous_install_check()
         if ss_install is True:
             input("Exiting...")
             cleanup()
-        
+
         # Validate permissions and connectivity for the sql server
         validate_sql(service_account, service_account_password, hostname, database)
-        
+
         # Install Secret Server
         install_complete = install_secret_server(admin_password, service_account, service_account_password, hostname, database)
         if install_complete is True:
             cleanup()
         else:
             print("Installation of Secret Server failed.")
-    
+
     # Don't know what this would be. Assume normal windows variant.
     else:
         print("\nUnknown operating system identified. Secret Server should be installed on Windows Server 2016 or newer.")
         print("Exiting...")
-        
+
     return
 
 
@@ -975,23 +975,23 @@ def parse():
     # Add argument that contains the hostname of the SQL server to connect to
     parser.add_argument("-s", "--server", dest="server", action="store", type=str, required=False,
         help="The hostname of the SQL server to connect to.")
-        
+
     # Add argument that contains the database name for Secret Server to use
     parser.add_argument("-d", "--database", dest="database", action="store", type=str, required=False,
         help="The name of the SQL database that Secret Server should use. Default is generally 'SecretServer'.")
-        
+
     #    help="The service account username used to connect to the SQL database. Username should be in the format 'domain\\username'.")
     parser.add_argument("-sa", "--service_account", dest="service_account", action="store", type=str, required=False,
         help="The service account username used to connect to the SQL database. Username should be in the format 'domain\\username'.")
-        
-    # Add argument that contains the password of the service account             
+
+    # Add argument that contains the password of the service account
     parser.add_argument("-sap", "--service_account_password", dest="service_account_password", action="store", type=str, required=False,
-        help="The password for the service account used to connect to SQL.") 
-        
-    # Add argument that contains the password of the local administrator account in secret server            
+        help="The password for the service account used to connect to SQL.")
+
+    # Add argument that contains the password of the local administrator account in secret server
     parser.add_argument("-a", "--administrator", dest="admin_password", action="store", type=str, required=False,
         help="The password for the local administrator account in Secret Server.")
-    
+
     return parser.parse_args()
 
 
@@ -1004,7 +1004,7 @@ if __name__ == '__main__':
     # Create a list of argument keys
     argument_keys = vars(args).keys()
 
-    # For each of the arguments, check to see if they are equal to None. 
+    # For each of the arguments, check to see if they are equal to None.
     # If equal to none, prompt user to input a values
     for key in argument_keys:
         if getattr(args, key) is None:
