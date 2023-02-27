@@ -44,7 +44,7 @@ jobs:
           pip install nuitka
       - name: Build
         run : |
-          python -m nuitka --standalone --follow-imports --assume-yes-for-downloads --output-dir=build --onefile --windows-icon-from-ico=secret_server.png ${{ env.SCRIPT }}.py
+          python -m nuitka --standalone --assume-yes-for-downloads --output-dir=build --onefile --windows-icon-from-ico=secret_server.png ${{ env.SCRIPT }}.py
       - name: Upload artifact
         uses: actions/upload-artifact@v3.1.0
         with:
@@ -54,10 +54,10 @@ jobs:
             build/*.app/**/*
       
       # Download the executable
-      - uses: actions/download-artifact@v3
-        with:
-          name: Windows Build
-          path: .
+      #- uses: actions/download-artifact@v3
+      #  with:
+      #    name: Windows Build
+      #    path: .
           
       # Create semantic version
       - name: Semantic Versioning
@@ -77,9 +77,6 @@ jobs:
           minor_regexp_flags: ""
           # Format for the version
           format: "v${major}.${minor}.${patch}"
-      
-      #- name: Check output
-      #  run: echo ${{ steps.versioning.outputs.version_tag }}
 
       # Create new release
       - name: Create Release
