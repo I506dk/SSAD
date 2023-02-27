@@ -4,6 +4,9 @@
 
 #### A python script to automate Secret Server deployments.
 
+[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+![CodeQL](https://github.com/I506dk/SSAD/workflows/CodeQL/badge.svg)
+
 ## Features
 - Automatically download the latest version of Secret Server
 - Install prerequisites for Secret Server like IIS and dotnet 4.8
