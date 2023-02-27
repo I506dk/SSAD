@@ -54,10 +54,10 @@ jobs:
             build/*.app/**/*
       
       # Download the executable
-      #- uses: actions/download-artifact@v3
-      #  with:
-      #    name: Windows Build
-      #    path: .
+      - uses: actions/download-artifact@v3
+        with:
+          name: Windows Build
+          path: .
           
       # Create semantic version
       - name: Semantic Versioning
