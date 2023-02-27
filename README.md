@@ -41,9 +41,13 @@ To run ssad.py for the first time:
 ```
 python ssad.py
 ```
+or
+```
+ssad.exe
+```
 This will configure Secret Server, and require user interaction
 
-Arguments can be specified to the script if an automated installation is wanted.
+Arguments can be specified to the script or executable if an automated installation is wanted.
 
 (***-h or --help***) - will display the help screen.
 
@@ -75,6 +79,16 @@ Example run using arguments:
 ```
 python ssad.py -s my-sql-server -d SecretServer -sa test.domain\service_account -sap service_password -a admin_password
 ```
+or
+```
+ssad.exe -s my-sql-server -d SecretServer -sa test.domain\service_account -sap service_password -a admin_password
+```
+
+## Troubleshooting
+If the executable doesn't open or doesn't start, right click the executable and select properties.
+At the bottom right of the properties windows, check the box next to "Unblock" to allow the executable to run.
+
+![exe_properties](https://user-images.githubusercontent.com/33561466/221655835-0019c865-2a61-467f-bf06-c00fcb589b2c.png)
 
 ## To Do
 - [ ] Create function to remotely install and configure MS SQL (SQL express, and SQL Dev versions)
