@@ -51,7 +51,7 @@ ssad.exe
 ```
 This will configure Secret Server, and require user interaction
 
-Arguments can be specified to the script or executable if an automated installation is wanted.
+Arguments can be passed to the script or executable if an automated installation is wanted.
 
 (***-h or --help***) - will display the help screen.
 
