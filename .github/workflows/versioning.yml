@@ -1,4 +1,4 @@
-name: version
+name: Latest Version
 on:
   push:
     branches:
