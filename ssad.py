@@ -140,7 +140,6 @@ def process_exists(file_path):
     return current_process, process_path, process_pid
 
 
-
 # Define function to print out progress
 def print_progress(iteration, total, width=50):
     percent = ("{0:." + str(1) + "f}").format(100 * (iteration / float(total)))
@@ -172,27 +171,13 @@ def download_file(url, save_path):
     return
 
 
-# Define a function to write status to progress file
-def write_status(status):
-    path = os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt"
-
-    if os.path.exists(path) is True:
-        with open(path, "a+") as file:
-            file.write(status)
-            file.write('\n')
-    else:
-        print("Unable to find progress file.")
-
-    return
-
-
 # Define a function to create a python scheduled task
 # If computer, username, domain, and password are set to None,
 # The function will use the current domain/user/password and computer (localhost)
 def create_task(task_name, argument_list, script_name=None, script_path=None, computer=None, username=None, domain=None, password=None):
     # Set initial variables
     author="i506dk"
-    
+
     # Task specifics
     # Set the trigger to user logon
     TASK_TRIGGER_LOGON = 9
@@ -219,12 +204,11 @@ def create_task(task_name, argument_list, script_name=None, script_path=None, co
     task_actions = task_definition.Actions
     action = task_actions.Create(TASK_ACTION_EXEC)
     action.ID = task_name
-    
+
     # Check to determine if this is running as an exe or not
     current_file_name = __file__
     current_path = os.path.realpath(__file__)
     if ("AppData" in current_file_name) and ("onefile" in current_path):
-        print("treating as exe")
         # Assume that this is an executable as it should never be running from here
         working_directory = os.getcwd()
         # Create executable name
@@ -242,7 +226,6 @@ def create_task(task_name, argument_list, script_name=None, script_path=None, co
         else:
             action.Arguments += " " + argument_list
     else:
-        print("treating as script")
         # Get path to the python interpreter
         python_path = win32api.GetModuleFileName(0)
         # Get full script path if not supplied
@@ -290,24 +273,6 @@ def create_task(task_name, argument_list, script_name=None, script_path=None, co
 def restart_windows(arg_list):
     # Print warning message
     print("Restarting in 10 seconds...")
-    # For any items that say "awaiting restart" change those to "passed"
-    progress_file = os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt"
-    if os.path.exists(progress_file) is True:
-        with open(progress_file, "r+") as file:
-            content = file.readlines()
-    else:
-        content = None
-
-    # Overwrite file
-    with open(progress_file, "w") as file:
-        # Break items apart and add to dictionary
-        if content is not None:
-            for line in content:
-                if "awaiting restart" in line:
-                    new_line = line.replace("awaiting restart", "passed")
-                    file.write(new_line)
-                else:
-                    file.write(line)
 
     # Set script to re-run at boot with the arguments originally passed to it
     script_name = os.path.basename(__file__)
@@ -400,6 +365,16 @@ def validate_sql(service_account, service_account_password, hostname, database, 
     script_path = os.path.dirname(os.path.realpath(__file__)) + "\\script.ps1"
     output_path = os.path.dirname(os.path.realpath(__file__)) + "\\output.txt"
     error_path = os.path.dirname(os.path.realpath(__file__)) + "\\error.txt"
+
+    # Running this script results in an error in the event log
+    # Doesn't seem to affect functionality
+    # The application-specific permission settings do not grant
+    # Local Activation permission for the COM Server application with CLSID
+    # {} and APPID {}
+    # to the user {}
+    # from address LocalHost (Using LRPC) running in the application container
+    # Unavailable SID (Unavailable). This security permission can be modified
+    # using the Component Services administrative tool.
 
     # Initialize powershell script contents to check sql permissions
     script_content = """$sql_command = "SELECT * FROM fn_my_permissions(NULL, 'DATABASE');"
@@ -502,22 +477,12 @@ $dataSet.Tables | Format-Table -HideTableHeaders""".format(hostname, database)
 
 # Define a function to cleanup
 def cleanup():
-    # Search for the registry key
-    autorun_key = subprocess.run('reg query "HKEY_CURRENT_USER\\Software\Microsoft\Windows\CurrentVersion\\RunOnce"', capture_output=True)
-    autorun_key = autorun_key.stdout.decode("utf-8")
-    # If key exists, delete it, if not silently pass
-    if autorun_key is not None:
-        if len(autorun_key.strip()) > 0:
-            # Remove registry key
-            run_at_startup_remove(os.path.basename(__file__), user=True)
-
-    # Remove progress file if it exists
-    os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt"
-    if os.path.exists(os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt") is True:
-        os.remove(os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt")
-
     # Remove scheduled task
     subprocess.Popen('schtasks /delete /tn "Secret Server Automated Deployment Tool" /f')
+
+    # Delete installer if it exists
+    if os.path.exists(os.path.dirname(os.path.realpath(__file__)) + "\\setup.exe") is True:
+        os.remove(os.path.dirname(os.path.realpath(__file__)) + "\\setup.exe")
 
     return
 
@@ -535,7 +500,7 @@ def install_secret_server(administrator_password, service_account, service_accou
         download_file(installer_url, installer)
 
         # Create log folder
-        log_directory = os.path.dirname(os.path.realpath(__file__)) + "\\Logs"
+        log_directory = os.getcwd() + "\\Logs"
         if os.path.exists(log_directory) is True:
             # os.walk returns path, directories, and files.
             # Just delete the files
@@ -573,12 +538,12 @@ def install_secret_server(administrator_password, service_account, service_accou
         # Install Secret Server
         installer_process = subprocess.Popen(ss_command)
 
-        # Sleep for 10 seconds
-        time.sleep(10)
+        # Sleep for 15 seconds
+        time.sleep(15)
 
         # Check the PID of the Secret Server installer
         # If it is still running, let it do its thing, otherwise continue
-        print("\nChecking for installer process...")
+        print("Checking for installer process...")
         if installer_process.pid is not None:
             print("Installer found running with PID: {}".format(installer_process.pid))
             j = 1
@@ -593,26 +558,27 @@ def install_secret_server(administrator_password, service_account, service_accou
                     while j > 0:
                         sys.stdout.write('\b \b')
                         j -= 1
-        else:
-            # If no process is found check for errors or failure
-            post_check = previous_install_check()
-            if post_check is True:
-                print("No installer found running. Continuing...")
-            else:
-                # Assume the install failed and check the event logs
-                print("Installation of Secret Server failed.")
-                input("Press any key to exit...")
-                exit()
-
-        # Print finish message along with url and credentials
-        print("\nSecret Server can be accessed at 'https://{}/SecretServer'".format(socket.getfqdn()))
-        print("\nLocal administrator account for Secret Server created with username 'administrator'.")
-        print("Secret Server installation log files are located at '{}'".format(log_file))
-        input("Press any key to exit...")
 
         # Once Secret Server is installed and configured, delete the setup.exe file
         if os.path.exists(installer) is True:
             os.remove(installer)
+
+        # Check after the fact to see if secret server was installed or not
+        post_check = previous_install_check()
+        if post_check is True:
+            print("No installer found running. Continuing...")
+        else:
+            # Assume the install failed and check the event logs
+            print("Installation of Secret Server failed.")
+            print("Check log files for more information. {}".format(log_file))
+            input("Press enter to exit...")
+            exit()
+
+        # Print finish message along with url and credentials
+        print("\nSecret Server can be accessed at 'https://{}/SecretServer'".format(socket.getfqdn()))
+        print("Local administrator account for Secret Server created with username 'administrator'.")
+        print("Secret Server installation log files are located at '{}'".format(log_file))
+        input("\nPress enter to exit...")
 
         return True
 
@@ -637,326 +603,110 @@ def main_function(admin_password, service_account, service_account_password, hos
     elif (os_check == '2') or (os_check == '3'):
         print("\nDetected Windows Server version. Continuing...")
 
-        # Create a text file to check progress
-        progress_file = os.path.dirname(os.path.realpath(__file__)) + "\\progress.txt"
-
         # Initialize a dictionary to hold statuses of each item to be installed
         statuses = {}
 
-        # Check if progress file exists, if not create it
-        if os.path.exists(progress_file) is True:
-            print("Found progress file...")
-            with open(progress_file, "r+") as file:
-                content = file.readlines()
-                # Break items apart and add to dictionary
-                for line in content:
-                    line = line.strip('\n')
-                    item, status = line.split(" = ")
-                    statuses[item] = status
-        else:
-            with open(progress_file, "w+") as file:
-                print("Progress file not found. Creating...")
+        # Check if IIS is currently installed or not.
+        iis_state = parse_command("(Get-WindowsFeature Web-Server).InstallState")
+        # Install IIS if not already installed.
+        if str(iis_state) == "Installed":
+            print("Internet Information Services (IIS) is installed on this server. Continuing...")
+            statuses["iis"] = "passed"
 
-        # Check for iis
-        if statuses.__contains__("iis"):
-            # Install iis and related items
-            if statuses["iis"] != "passed":
-                # Check if IIS is currently installed or not.
-                iis_state = parse_command("(Get-WindowsFeature Web-Server).InstallState")
-                # Install IIS if not already installed.
-                if str(iis_state) == "Installed":
-                    print("Internet Information Services (IIS) is installed on this server. Continuing...")
-                    # Write iis status to file
-                    write_status("iis = passed")
-                    statuses["iis"] = "passed"
-
-                    # If IIS is installed, check https site binding
-                    https_binding = parse_command('(Get-IISSiteBinding -Name "Default Web Site" -Protocol https).bindingInformation')
-                    # Create https binding if it doesn't already exist
-                    if "Web site binding 'https' does not exist." in https_binding:
-                        print("HTTPS binding does not exist on this server. Creating binding...")
-                        create_binding()
-                        # Write binding status to file
-                        write_status("binding = passed")
-                        statuses["binding"] = "passed"
-                    else:
-                        print("HTTPS binding set to {}. Continuing...".format(https_binding))
-                        # Write binding status to file
-                        write_status("binding = passed")
-                        statuses["binding"] = "passed"
-
-                    # Check for https activation
-                    https_activation_state = parse_command("(Get-WindowsFeature NET-WCF-HTTP-Activation45).InstallState")
-                    # Install https activation if not already installed
-                    if str(https_activation_state) == "Installed":
-                        print("HTTP activation is configured on this server. Continuing...")
-                        # Write http activation status to file
-                        write_status("https_activation = passed")
-                        statuses["https_activation"] = "passed"
-                    else:
-                        print("Installing HTTP activation on this server...")
-                        parse_command("Install-WindowsFeature NET-WCF-HTTP-Activation45")
-                        # Write http activation status to file
-                        write_status("https_activation = passed")
-                        statuses["https_activation"] = "passed"
-
-                    # Check for tcp activation
-                    tcp_activation_state = parse_command("(Get-WindowsFeature NET-WCF-TCP-Activation45).InstallState")
-                    # Install tcp activation if not already installed
-                    if str(tcp_activation_state) == "Installed":
-                        print("TCP activation is configured on this server. Continuing...")
-                        # Write tcp activation status to file
-                        write_status("tcp_activation = passed")
-                        statuses["tcp_activation"] = "passed"
-                    else:
-                        print("Installing TCP activation on this server...")
-                        parse_command("Install-WindowsFeature NET-WCF-TCP-Activation45")
-                        # Write tcp activation status to file
-                        write_status("tcp_activation = passed")
-                        statuses["tcp_activation"] = "passed"
-
-                else:
-                    # Install IIS
-                    print("Installing Internet Information Services (IIS) on this server...")
-                    install_iis()
-                    # Write iis status to file
-                    write_status("iis = passed")
-                    statuses["iis"] = "passed"
-
-                    # Create HTTPS binding using self signed certificate
-                    print("Creating HTTPS binding on this server...")
-                    create_binding()
-                    # Write binding status to file
-                    write_status("binding = passed")
-                    statuses["binding"] = "passed"
-
-                    print("Installing HTTP activation on this server...")
-                    parse_command("Install-WindowsFeature NET-WCF-HTTP-Activation45")
-                    # Write http activation status to file
-                    write_status("https_activation = passed")
-                    statuses["https_activation"] = "passed"
-
-                    print("Installing TCP activation on this server...")
-                    parse_command("Install-WindowsFeature NET-WCF-TCP-Activation45")
-                    # Write tcp activation status to file
-                    write_status("tcp_activation = passed")
-                    statuses["tcp_activation"] = "passed"
-
-
-            # Check for https binding
-            if statuses.__contains__("binding"):
-                # Install https binding
-                if statuses["binding"] != "passed":
-                    # If IIS is installed, check https site binding
-                    https_binding = parse_command('(Get-IISSiteBinding -Name "Default Web Site" -Protocol https).bindingInformation')
-                    # Create https binding if it doesn't already exist
-                    if "Web site binding 'https' does not exist." in https_binding:
-                        print("HTTPS binding does not exist on this server. Creating binding...")
-                        create_binding()
-                        # Write binding status to file
-                        write_status("binding = passed")
-                        statuses["binding"] = "passed"
-                    else:
-                        print("HTTPS binding set to {}. Continuing...".format(https_binding))
-                        # Write binding status to file
-                        write_status("binding = passed")
-                        statuses["binding"] = "passed"
+            # If IIS is installed, check https site binding
+            https_binding = parse_command('(Get-IISSiteBinding -Name "Default Web Site" -Protocol https).bindingInformation')
+            # Create https binding if it doesn't already exist
+            if "Web site binding 'https' does not exist." in https_binding:
+                print("HTTPS binding does not exist on this server. Creating binding...")
+                create_binding()
+                statuses["binding"] = "passed"
+            else:
+                print("HTTPS binding set to {}. Continuing...".format(https_binding))
+                statuses["binding"] = "passed"
 
             # Check for https activation
-            if statuses.__contains__("https_activation"):
-                if statuses["https_activation"] != "passed":
-                    # Check for https activation
-                    https_activation_state = parse_command("(Get-WindowsFeature NET-WCF-HTTP-Activation45).InstallState")
-                    # Install https activation if not already installed
-                    if str(https_activation_state) == "Installed":
-                        print("HTTP activation is configured on this server. Continuing...")
-                        # Write http activation status to file
-                        write_status("https_activation = passed")
-                        statuses["https_activation"] = "passed"
-                    else:
-                        print("Installing HTTP activation on this server...")
-                        parse_command("Install-WindowsFeature NET-WCF-HTTP-Activation45")
-                        # Write http activation status to file
-                        write_status("https_activation = passed")
-                        statuses["https_activation"] = "passed"
-
-            # Check for tcp activation
-            if statuses.__contains__("tcp_activation"):
-                if statuses["tcp_activation"] != "passed":
-                    # Check for tcp activation
-                    tcp_activation_state = parse_command("(Get-WindowsFeature NET-WCF-TCP-Activation45).InstallState")
-                    # Install tcp activation if not already installed
-                    if str(tcp_activation_state) == "Installed":
-                        print("TCP activation is configured on this server. Continuing...")
-                        # Write tcp activation status to file
-                        write_status("tcp_activation = passed")
-                        statuses["tcp_activation"] = "passed"
-                    else:
-                        print("Installing TCP activation on this server...")
-                        parse_command("Install-WindowsFeature NET-WCF-TCP-Activation45")
-                        # Write tcp activation status to file
-                        write_status("tcp_activation = passed")
-                        statuses["tcp_activation"] = "passed"
-
-        # This should be the deafult case. No progress file, nothing installed.
-        else:
-            # Install everything
-            # Check if IIS is currently installed or not.
-            iis_state = parse_command("(Get-WindowsFeature Web-Server).InstallState")
-            # Install IIS if not already installed.
-            if str(iis_state) == "Installed":
-                print("Internet Information Services (IIS) is installed on this server. Continuing...")
-                # Write iis status to file
-                write_status("iis = passed")
-                statuses["iis"] = "passed"
-
-                # If IIS is installed, check https site binding
-                https_binding = parse_command('(Get-IISSiteBinding -Name "Default Web Site" -Protocol https).bindingInformation')
-                # Create https binding if it doesn't already exist
-                if "Web site binding 'https' does not exist." in https_binding:
-                    print("HTTPS binding does not exist on this server. Creating binding...")
-                    create_binding()
-                    # Write binding status to file
-                    write_status("binding = passed")
-                    statuses["binding"] = "passed"
-                else:
-                    print("HTTPS binding set to {}. Continuing...".format(https_binding))
-                    # Write binding status to file
-                    write_status("binding = passed")
-                    statuses["binding"] = "passed"
-
-                # Check for https activation
-                https_activation_state = parse_command("(Get-WindowsFeature NET-WCF-HTTP-Activation45).InstallState")
-                # Install https activation if not already installed
-                if str(https_activation_state) == "Installed":
-                    print("HTTP activation is configured on this server. Continuing...")
-                    # Write http activation status to file
-                    write_status("https_activation = passed")
-                    statuses["https_activation"] = "passed"
-                else:
-                    print("Installing HTTP activation on this server...")
-                    parse_command("Install-WindowsFeature NET-WCF-HTTP-Activation45")
-                    # Write http activation status to file
-                    write_status("https_activation = passed")
-                    statuses["https_activation"] = "passed"
-
-                # Check for tcp activation
-                tcp_activation_state = parse_command("(Get-WindowsFeature NET-WCF-TCP-Activation45).InstallState")
-                # Install tcp activation if not already installed
-                if str(tcp_activation_state) == "Installed":
-                    print("TCP activation is configured on this server. Continuing...")
-                    # Write tcp activation status to file
-                    write_status("tcp_activation = passed")
-                    statuses["tcp_activation"] = "passed"
-                else:
-                    print("Installing TCP activation on this server...")
-                    parse_command("Install-WindowsFeature NET-WCF-TCP-Activation45")
-                    # Write tcp activation status to file
-                    write_status("tcp_activation = passed")
-                    statuses["tcp_activation"] = "passed"
+            https_activation_state = parse_command("(Get-WindowsFeature NET-WCF-HTTP-Activation45).InstallState")
+            # Install https activation if not already installed
+            if str(https_activation_state) == "Installed":
+                print("HTTP activation is configured on this server. Continuing...")
+                statuses["https_activation"] = "passed"
             else:
-                # Install IIS
-                print("Installing Internet Information Services (IIS) on this server...")
-                install_iis()
-                # Write iis status to file
-                write_status("iis = passed")
-                statuses["iis"] = "passed"
-
-                # Check https site binding
-                https_binding = parse_command('(Get-IISSiteBinding -Name "Default Web Site" -Protocol https).bindingInformation')
-                # Create https binding if it doesn't already exist
-                if "Web site binding 'https' does not exist." in https_binding:
-                    print("HTTPS binding does not exist on this server. Creating binding...")
-                    create_binding()
-                    # Write binding status to file
-                    write_status("binding = passed")
-                    statuses["binding"] = "passed"
-                else:
-                    print("HTTPS binding set to {}. Continuing...".format(https_binding))
-                    # Write binding status to file
-                    write_status("binding = passed")
-                    statuses["binding"] = "passed"
-
                 print("Installing HTTP activation on this server...")
                 parse_command("Install-WindowsFeature NET-WCF-HTTP-Activation45")
-                # Write http activation status to file
-                write_status("https_activation = passed")
                 statuses["https_activation"] = "passed"
 
+            # Check for tcp activation
+            tcp_activation_state = parse_command("(Get-WindowsFeature NET-WCF-TCP-Activation45).InstallState")
+            # Install tcp activation if not already installed
+            if str(tcp_activation_state) == "Installed":
+                print("TCP activation is configured on this server. Continuing...")
+                statuses["tcp_activation"] = "passed"
+            else:
                 print("Installing TCP activation on this server...")
                 parse_command("Install-WindowsFeature NET-WCF-TCP-Activation45")
-                # Write tcp activation status to file
-                write_status("tcp_activation = passed")
                 statuses["tcp_activation"] = "passed"
 
-        # Check for dotnet
-        if statuses.__contains__("dotnet_48"):
-            if (statuses["dotnet_48"] != "passed") and (statuses["dotnet_48"] != "awaiting restart"):
-                # Install dotnet framework 4.8 if not already installed.
-                dotnet_check = subprocess.run('reg query "HKEY_LOCAL_MACHINE\\SOFTWARE\Microsoft\\NET Framework Setup\\NDP\\v4\\full" /v version', capture_output=True)
-                dotnet_check = dotnet_check.stdout.decode("utf-8")
-                dotnet_version = re.search('\d+(\.\d+)+', dotnet_check)
-                # Install dotnet 4.8 if it isn't already installed
-                # If dotnet is installed, check to make sure it is the correct version
-                if dotnet_version is not None:
-                    dotnet_version = dotnet_version[0]
-                    # Install dotnet 4.8 if not already installed (Other versions don't matter)
-                    if "4.8" in dotnet_version:
-                        print("Dotnet 4.8 is installed on this server. Continuing...")
-                        # Write dotnet status to file
-                        write_status("dotnet_48 = passed")
-                        statuses["dotnet_48"] = "passed"
-                    else:
-                        print("Installing Dotnet 4.8 on this server...")
-                        install_dotnet()
-                        # Write dotnet status to file
-                        write_status("dotnet_48 = awaiting restart")
-                        # Restart server
-                        restart_windows(["-s", hostname, "-d", database, "-sa", service_account, "-sap", service_account_password, "-a", admin_password])
-
-                else:
-                    print("Installing Dotnet 4.8 on this server...")
-                    install_dotnet()
-                    # Write dotnet status to file
-                    write_status("dotnet_48 = awaiting restart")
-                    # Restart server
-                    restart_windows(["-s", hostname, "-d", database, "-sa", service_account, "-sap", service_account_password, "-a", admin_password])
-            elif statuses["dotnet_48"] == "awaiting restart":
-                # Restart server
-                restart_windows(["-s", hostname, "-d", database, "-sa", service_account, "-sap", service_account_password, "-a", admin_password])
-            else:
-                # Silently pass as dotnet is already installed
-                pass
-
         else:
-            # Install dotnet framework 4.8 if not already installed.
-            dotnet_check = subprocess.run('reg query "HKEY_LOCAL_MACHINE\\SOFTWARE\Microsoft\\NET Framework Setup\\NDP\\v4\\full" /v version', capture_output=True)
-            dotnet_check = dotnet_check.stdout.decode("utf-8")
-            dotnet_version = re.search('\d+(\.\d+)+', dotnet_check)
-            # Install dotnet 4.8 if it isn't already installed
-            # If dotnet is installed, check to make sure it is the correct version
-            if dotnet_version is not None:
-                dotnet_version = dotnet_version[0]
-                # Install dotnet 4.8 if not already installed (Other versions don't matter)
-                if "4.8" in dotnet_version:
-                    print("Dotnet 4.8 is installed on this server. Continuing...")
-                    # Write dotnet status to file
-                    write_status("dotnet_48 = passed")
-                    statuses["dotnet_48"] = "passed"
-                else:
-                    print("Installing Dotnet 4.8 on this server...")
-                    install_dotnet()
-                    # Write dotnet status to file
-                    write_status("dotnet_48 = awaiting restart")
-                    # Restart server
-                    restart_windows(["-s", hostname, "-d", database, "-sa", service_account, "-sap", service_account_password, "-a", admin_password])
+            # Install IIS
+            print("Installing Internet Information Services (IIS) on this server...")
+            install_iis()
+            statuses["iis"] = "passed"
+
+            # If IIS is installed, check https site binding
+            https_binding = parse_command('(Get-IISSiteBinding -Name "Default Web Site" -Protocol https).bindingInformation')
+            # Create https binding if it doesn't already exist
+            if "Web site binding 'https' does not exist." in https_binding:
+                print("HTTPS binding does not exist on this server. Creating binding...")
+                create_binding()
+                statuses["binding"] = "passed"
+            else:
+                print("HTTPS binding set to {}. Continuing...".format(https_binding))
+                statuses["binding"] = "passed"
+
+            # Check for https activation
+            https_activation_state = parse_command("(Get-WindowsFeature NET-WCF-HTTP-Activation45).InstallState")
+            # Install https activation if not already installed
+            if str(https_activation_state) == "Installed":
+                print("HTTP activation is configured on this server. Continuing...")
+                statuses["https_activation"] = "passed"
+            else:
+                print("Installing HTTP activation on this server...")
+                parse_command("Install-WindowsFeature NET-WCF-HTTP-Activation45")
+                statuses["https_activation"] = "passed"
+
+            # Check for tcp activation
+            tcp_activation_state = parse_command("(Get-WindowsFeature NET-WCF-TCP-Activation45).InstallState")
+            # Install tcp activation if not already installed
+            if str(tcp_activation_state) == "Installed":
+                print("TCP activation is configured on this server. Continuing...")
+                statuses["tcp_activation"] = "passed"
+            else:
+                print("Installing TCP activation on this server...")
+                parse_command("Install-WindowsFeature NET-WCF-TCP-Activation45")
+                statuses["tcp_activation"] = "passed"
+
+        # Install dotnet framework 4.8 if not already installed.
+        dotnet_check = subprocess.run('reg query "HKEY_LOCAL_MACHINE\\SOFTWARE\Microsoft\\NET Framework Setup\\NDP\\v4\\full" /v version', capture_output=True)
+        dotnet_check = dotnet_check.stdout.decode("utf-8")
+        dotnet_version = re.search('\d+(\.\d+)+', dotnet_check)
+        # Install dotnet 4.8 if it isn't already installed
+        # If dotnet is installed, check to make sure it is the correct version
+        if dotnet_version is not None:
+            dotnet_version = dotnet_version[0]
+            # Install dotnet 4.8 if not already installed (Other versions don't matter)
+            if "4.8" in dotnet_version:
+                print("Dotnet 4.8 is installed on this server. Continuing...")
+                statuses["dotnet_48"] = "passed"
             else:
                 print("Installing Dotnet 4.8 on this server...")
                 install_dotnet()
-                # Write dotnet status to file
-                write_status("dotnet_48 = awaiting restart")
                 # Restart server
                 restart_windows(["-s", hostname, "-d", database, "-sa", service_account, "-sap", service_account_password, "-a", admin_password])
+        else:
+            print("Installing Dotnet 4.8 on this server...")
+            install_dotnet()
+            # Restart server
+            restart_windows(["-s", hostname, "-d", database, "-sa", service_account, "-sap", service_account_password, "-a", admin_password])
 
         # Check to make sure all prerequisites passed
         if all(statuses[item] == "passed" for item in statuses):
@@ -966,7 +716,6 @@ def main_function(admin_password, service_account, service_account_password, hos
             for item in keys:
                 if statuses[item] != "passed":
                     print(item + " did not pass validation checks, and has status: " + statuses[item])
-
 
         # Check to see if secret server is already installed or not
         ss_install = previous_install_check()
